@@ -1,0 +1,27 @@
+#pragma once
+
+#include "sysutils.h"
+
+/// @brief Firmware version info
+namespace VersionInfo {{
+    constexpr char progName[] = sym_to_string(PROGNAME);
+    constexpr unsigned major = {verMajor};
+    constexpr unsigned minor = {verMinor};
+    constexpr unsigned revision = {verRevision};
+    constexpr unsigned build = {verBuild};
+    constexpr char commit[] = "{verCommit}";
+    constexpr bool isDevBuild = {verIsDevBuild};
+    //constexpr char name[] = "{verString}";
+    // don't include commit ID in version string
+    constexpr char name[] = "{verMajor}.{verMinor}.{verRevision}.{verBuild}"
+#if {verIsDevBuild}
+        "-dev"
+#endif
+    ;
+    constexpr char date[] = "{verDatestamp}";
+    constexpr char time[] = "{verTimestamp}";
+}}
+
+// Symbols for preprocessor
+#define BUILD_VERSION "{verString}"
+#define PROG_NAME sym_to_string(PROGNAME)
