@@ -1,31 +1,15 @@
 #pragma once
 
-// TODO: Simplify/remove this! Need a better way for Programs to get the CV inputs
 struct ProcessArgs
 {
     daisy2::AudioInBuf inbuf;
     daisy2::AudioOutBuf outbuf;
-    unsigned cvIn1;
-    unsigned cvIn2;
-    unsigned cvInPot;
     bool fGateOn1;
     bool fGateOn2;
     bool fGateOnBut;
     bool fGateOff1;
     bool fGateOff2;
     bool fGateOffBut;
-
-// TODO: REMOVE
-    constexpr std::optional<unsigned> GetCV(unsigned input) const
-    {
-        switch (input) {
-            using enum HW::CVIn::ADC;
-            case CV1:   return cvIn1;
-            case CV2:   return cvIn2;
-            case Pot:   return cvInPot;
-            default:    return std::nullopt;
-        }
-    }
 
     constexpr bool GateOn(unsigned input) const
     {
@@ -133,9 +117,6 @@ public:
         return {
             .inbuf = inbuf,
             .outbuf = outbuf,
-            .cvIn1 = HW::CVIn::GetRaw(HW::CVIn::CV1),
-            .cvIn2 = HW::CVIn::GetRaw(HW::CVIn::CV2),
-            .cvInPot = HW::CVIn::GetRaw(HW::CVIn::Pot),
             .fGateOn1 = HW::CVIn::GateOn(HW::CVIn::CV1),
             .fGateOn2 = HW::CVIn::GateOn(HW::CVIn::CV2),
             .fGateOnBut = HW::button.TurnedOn(),
