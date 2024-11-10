@@ -60,6 +60,7 @@ int main()
     // Initialize the hardware
     HW::Init();
 
+    // Start audio processing by running a Program
     ProgramList::StartProcessing();
     // TODO: Get the previously-running program from saved settings
     programs.RunProgram(programs.GetList().front());
