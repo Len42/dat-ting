@@ -24,8 +24,16 @@ template<typename VALUE_T,
 class DataTable
 {
 public:
-    using value_t = VALUE_T;
-    static constexpr size_t numValues = NUM_VALUES;
+    using value_type = VALUE_T;
+    using size_type = size_t;
+    using pointer = value_type*;
+    using const_pointer = const value_type*;
+    using reference = value_type&;
+    using const_reference = const value_type&;
+    using iterator = pointer;
+    using const_iterator = const_pointer;
+
+    static constexpr size_type numValues = NUM_VALUES;
 
     consteval DataTable()
     {
@@ -34,16 +42,36 @@ public:
         }
     }
 
-    constexpr size_t size() const { return numValues; }
+    constexpr size_t size() const noexcept { return numValues; }
 
-    constexpr auto& getArray() { return data; }
+    constexpr auto& getArray() noexcept { return data; }
 
-    constexpr const auto& getArray() const { return data; }
+    constexpr const auto& getArray() const noexcept { return data; }
 
-    constexpr value_t& operator[](size_t index) { return data[index]; }
+    constexpr value_type& operator[](size_t index) noexcept { return data[index]; }
 
-    constexpr value_t operator[](size_t index) const { return data[index]; }
+    constexpr value_type operator[](size_t index) const noexcept { return data[index]; }
+
+    constexpr reference front() noexcept { return data[0]; }
+
+    constexpr const_reference front() const noexcept { return data[0]; }
+
+    constexpr reference back() noexcept { return data[numValues-1]; }
+
+    constexpr const_reference back() const noexcept { return data[numValues-1]; }
+
+    constexpr iterator begin() noexcept { return std::begin(data); }
+    
+    constexpr iterator end() noexcept { return std::end(data); }
+
+    constexpr const_iterator begin() const noexcept { return std::begin(data); }
+
+    constexpr const_iterator end() const noexcept { return std::end(data); }
+
+    constexpr iterator cbegin() const noexcept { return begin(); }
+
+    constexpr iterator cend() const noexcept { return end(); }
 
 private:
-    value_t data[numValues];
+    value_type data[numValues];
 };
