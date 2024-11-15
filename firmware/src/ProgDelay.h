@@ -1,19 +1,26 @@
 #pragma once
 
-// TODO: program parameters - not sure if any more are needed - maybe:
-// - attenuation (to avoid clipping)
-
+/// @brief Maximum delay time in seconds
 static constexpr float maxDelaySecs = 10;
-// Assume default sample rate because we need it at compile time
-static constexpr unsigned sampleRate = 48000u;
-static constexpr size_t maxDelaySamples = size_t(maxDelaySecs * sampleRate);
+
+/// @brief Maximum delay time in samples
+static constexpr size_t maxDelaySamples = size_t(maxDelaySecs * HW::sampleRate);
+
+/// @brief Specialized delay-line type
+using DelayLine = daisysp::DelayLine<float, maxDelaySamples>;
 
 // BUG: DelayLine variables should be static data members in ProgDelay but then
 // it cannot be stored in SDRAM (DSY_SDRAM_BSS does nothing in that case).
-static daisysp::DelayLine<float, maxDelaySamples> DSY_SDRAM_BSS delayLine1;
 
-static daisysp::DelayLine<float, maxDelaySamples> DSY_SDRAM_BSS delayLine2;
+/// @brief Delay line for regular delay
+static DelayLine DSY_SDRAM_BSS delayLine1;
 
+/// @brief Delay line for ping-pong delay
+static DelayLine DSY_SDRAM_BSS delayLine2;
+
+/// @brief Delay/echo @ref Program
+/// @details Implements normal and ping-pong delay. Various parameters can be set
+/// by the potentiometer or CV inputs. Pushbutton is used for tap tempo.
 class ProgDelay : public Program
 {
     // DEBUG: TODO: Some of these need to be implemented permanently
@@ -56,14 +63,14 @@ public:
     {
         theProgram = this; // DEBUG
 
-        //sampleRate = HW::seed.AudioSampleRate(); // nope, this is defined at compile time
         delayLine1.Init();
         delayLine2.Init();
-        SetDelay(delaySamples);
+        SetDelaySamples(delaySamples);
         mix.Init(daisysp::CROSSFADE_CPOW);
         SetMixLevel(effectMixLevel);
-        timerReadCv.Init(freqReadCv, sampleRate);
+        timerReadCv.Init(freqReadCv, HW::sampleRate);
         // Must call ReadCv to initialize things because Process() only calls it occasionally
+        // TODO: Is that right?
         ProcessArgs args = Program::MakeProcessArgs({},{});
         ReadCv(args);
     }
@@ -87,7 +94,6 @@ public:
             float input = in.left;
             float delayed = delayLine1.Read();
             float feedback = delayed * feedbackAmount;
-            // TODO: attenuation
             out.left = mix.Process(input, delayed);
             if (GetMode() == unsigned(Mode::PingPong)) {
                 // Ping-pong stereo delay: Two delay lines, one for each channel
@@ -113,9 +119,10 @@ public:
     Animation* GetAnimation() const override { return &animation; }
 
 protected:
+    /// @brief Update various CV-controlled parameters according to settings
+    /// @param args 
     void ReadCv(const ProcessArgs& args)
     {
-        // Update various CV-controlled parameters, according to settings
         std::optional<unsigned> cv;
         HW::CVIn::GetUnipolarExp(GetDelayControl())
             .and_then([this](float val) { SetDelayCv(val); return emptyOpt; });
@@ -125,9 +132,12 @@ protected:
             .and_then([this](float val) { SetMixLevel(val); return emptyOpt; });
     }
 
-    float GetDelay() const { return delaySamples; }
+    /// @brief Return the delay time in samples
+    /// @return 
+    float GetDelaySamples() const { return delaySamples; }
 
-    // TODO: Test if minChange works
+    /// @brief Set the delay time from a unipolar CV value
+    /// @param delay 
     void SetDelayCv(float delay)
     {
         static constexpr float minChange = debMinChange; // DEBUG
@@ -140,25 +150,38 @@ protected:
         }
     }
 
-    void SetDelaySecs(float delaySecs) { SetDelay(delaySecs * sampleRate); }
+    /// @brief Set the delay time in seconds
+    /// @param delaySecs 
+    void SetDelaySecs(float delaySecs) { SetDelaySamples(delaySecs * HW::sampleRate); }
 
-    void SetDelay(float samples)
+    /// @brief Set the delay time in samples
+    /// @param samples 
+    void SetDelaySamples(float samples)
     {
         delaySamples = samples;
         delayLine1.SetDelay(samples);
         delayLine2.SetDelay(samples);
     }
 
+    /// @brief Return the feedback amount
+    /// @return 
     float GetFeedbackAmount() const { return feedbackAmount; }
 
+    /// @brief Set the feedback amount from a unipolar CV value
+    /// @details Amount of 1.0 will give more than unity feedback.
+    /// @param amount float value in [0, 1]
     void SetFeedbackAmount(float amount)
     {
         // Map the CV to a range that goes a bit over 1.0
         feedbackAmount = rescale(amount, 0.0f, 0.95f, 0.0f, 1.1f);
     }
 
+    /// @brief Return the effect mix level
+    /// @return 
     float GetMixLevel() const { return effectMixLevel; }
 
+    /// @brief Set the effect mix level from a unipolar CV value
+    /// @param mixLevel 
     void SetMixLevel(float mixLevel)
     {
         // KLUDGE: Map mixLevel so there's a dead zone at each end, otherwise we
@@ -168,10 +191,7 @@ protected:
         mix.SetPos(mixLevel);
     }
 
-    // Tap tempo handling
-
-    HW::Sys::timeus_t tTap = 0;
-
+    /// @brief Handle tap tempo using the pushbutton
     void HandleTap()
     {
         // Called when tap button is pressed
@@ -217,6 +237,9 @@ private:
 
     RunningAverage<float, debAverageSamples> avgDelay;
 
+    HW::Sys::timeus_t tTap = 0;
+
+    /// @brief Animation for this program shows input and output amplitudes
     static inline AnimAmplitude<3> animation;
 
 protected:
@@ -225,6 +248,8 @@ protected:
 public:
     friend class DebugTask;
 
+    /// @brief @ref tasks::Task that prints (via serial output) current
+    /// parameter values
     class DebugTask : public tasks::Task<DebugTask>
     {
     public:
@@ -235,7 +260,7 @@ public:
         void execute()
         {
             if (theProgram) {
-                unsigned delay = unsigned(theProgram->GetDelay());
+                unsigned delay = unsigned(theProgram->GetDelaySamples());
                 float feedback = theProgram->GetFeedbackAmount();
                 auto [feedbackInt, feedbackFrac] = splitFloat(feedback, 3);
                 float mix = theProgram->GetMixLevel();

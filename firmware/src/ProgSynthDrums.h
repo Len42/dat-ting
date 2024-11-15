@@ -1,12 +1,14 @@
 #pragma once
 
+// TODO: Lots more drum settings!
+// TODO: Accent control by CV - but that messes up how the gates and parameters work
+
+/// @brief Synth drums program
 class ProgSynthDrums : public Program
 {
     using this_t = ProgSynthDrums;
 
-// TODO: Lots more drum settings!
-// TODO: Accent control by CV - but that messes up how the gates and parameters work
-
+    // Declare the configurable parameters of this program
     #define PARAM_VALUES(ITEM) \
         ITEM(HhOpen, "Hihat open/close") \
         ITEM(HhDecay, "Hihat decay") \
@@ -35,11 +37,11 @@ public:
         // TODO: Need better settings for all the drums
         auto sampleRate = HW::seed.AudioSampleRate();
         bass.Init(sampleRate);
-        SetBassSettings();
+        InitBassSettings();
         snare.Init(sampleRate);
-        SetSnareSettings();
+        InitSnareSettings();
         hihat.Init(sampleRate);
-        SetHhSettings();
+        InitHhSettings();
     }
 
     void Process(ProcessArgs& args) override
@@ -91,11 +93,14 @@ public:
     Animation* GetAnimation() const override { return &animation; }
 
 private:
+    /// @brief Decay value for open hi-hat
     static constexpr float decayHhOpen = 1.175f;
 
-    // DEBUG: This is mainly for testing. Probably remove it and have more limited settings
-    // as defined in params.
-    struct HhSettings {
+    /// @brief Settings for the hi-hat synth object
+    /// DEBUG: This is mainly for testing. Probably remove it and have more limited settings
+    /// as defined in params.
+    struct HhSettings
+    {
         float freq = 3000;
         float tone = 0.5f;
         float decay = 0.635f;
@@ -105,9 +110,10 @@ private:
         bool isOpen = false;
     };
 
-    HhSettings hhSettings;
+    HhSettings hhSettings; ///< Saved settings for the hi-hat synth object
 
-    void SetHhSettings()
+    /// @brief Initialize the settings for the hi-hat synth object
+    void InitHhSettings()
     {
         hihat.SetFreq(hhSettings.freq);
         hihat.SetTone(hhSettings.tone);
@@ -118,6 +124,11 @@ private:
         hihat.SetAccent(hhSettings.accent);
     }
 
+// TODO: doc comments
+
+    /// @brief Update hi-hat settings according to the potentiometer value
+    /// @param knob Which parameter the pot is controlling
+    /// @param pot Potentiometer CV value
     void UpdateHhSettings(KnobControl knob, float pot)
     {
         if (knob == KnobControl::HhAccent || knob == KnobControl::AllAccent) {
@@ -133,11 +144,13 @@ private:
         }
     }
 
-    void SetBassSettings()
+    /// @brief Initialize the settings for the bass drum synth object
+    void InitBassSettings()
     {
         // Just use the default settings.
     }
 
+    /// @brief Update bass drum settings according to the potentiometer value
     void UpdateBassSettings(KnobControl knob, float pot)
     {
         if (knob == KnobControl::BassAccent || knob == KnobControl::AllAccent) {
@@ -145,11 +158,13 @@ private:
         }
     }
 
-    void SetSnareSettings()
+    /// @brief Initialize the settings for the snare drum synth object
+    void InitSnareSettings()
     {
         snare.SetSnappy(0.2f);
     }
 
+    /// @brief Update snare drum settings according to the potentiometer value
     void UpdateSnareSettings(KnobControl knob, float pot)
     {
         if (knob == KnobControl::SnareAccent || knob == KnobControl::AllAccent) {
@@ -158,13 +173,13 @@ private:
     }
 
 private:
-    //daisysp::HiHat<> hihat;
     daisysp::HiHat<daisysp::RingModNoise> hihat;
 
     daisysp::SyntheticBassDrum bass;
 
     daisysp::SyntheticSnareDrum snare;
 
+    /// @brief Animation for this program shows the amplitudes of the drums
     static inline AnimAmplitude<3> animation;
 
 protected:
@@ -173,6 +188,7 @@ protected:
 public:
     friend class DebugTask;
 
+    /// @brief @ref tasks::Task that prints some info (via serial output)
     class DebugTask : public tasks::Task<DebugTask>
     {
     public:

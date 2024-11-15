@@ -1,43 +1,32 @@
 #pragma once
 
+/// @brief Arguments for @ref Program::Process
+/// @details Contains the audio input and output buffers, and also gate on/off
+/// flags because thost have to be calculated a bit carefully.
 struct ProcessArgs
 {
     daisy2::AudioInBuf inbuf;
     daisy2::AudioOutBuf outbuf;
-    bool fGateOn1;
-    bool fGateOn2;
-    bool fGateOnBut;
-    bool fGateOff1;
-    bool fGateOff2;
-    bool fGateOffBut;
+    bool fGateOn[HW::CVIn::_inCount];
+    bool fGateOff[HW::CVIn::_inCount];
 
     constexpr bool GateOn(unsigned input) const
     {
-        switch (input) {
-            case HW::CVIn::CV1:     return fGateOn1;
-            case HW::CVIn::CV2:     return fGateOn2;
-            case HW::CVIn::Button:  return fGateOnBut;
-            default:                return false;
-        }
+        return (input < HW::CVIn::_inCount) ? fGateOn[input] : false;
     }
 
     constexpr bool GateOff(unsigned input) const
     {
-        switch (input) {
-            case HW::CVIn::CV1:     return fGateOff1;
-            case HW::CVIn::CV2:     return fGateOff2;
-            case HW::CVIn::Button:  return fGateOffBut;
-            default:                return false;
-        }
+        return (input < HW::CVIn::_inCount) ? fGateOff[input] : false;
     }
 };
 
-class Animation;
-
+/// @brief Abstract base class for a program that implements a particular audio
+/// or CV processing algorithm
 class Program
 {
 public:
-    // Program parameters
+    /// @brief Value of a user-settable parameter for a Program
     union ParamVal
     {
         bool b;
@@ -45,38 +34,61 @@ public:
         float fl;
     };
 
+    /// @brief Type ID of a user-settable parameter for a Program
     enum class PType { None, Bool, Num, Float, CVSource };
 
+    /// @brief Member pointer to the data member for a user-settable parameter
+    /// in a Program
     using ParamValPtr = ParamVal Program::*;
+
+    // Macro to abbreviate casting a subclass member pointer to ParamValPtr
     #define PARAM_CAST(param) static_cast<ParamValPtr>(&this_t::param)
 
+    /// @brief Descriptor for a user-settable parameter for a Program
     struct ParamDesc
     {
-        std::string_view name;
-        PType type = PType::Bool;
-        ParamValPtr pvalue = nullptr; // pointer to value member
+        std::string_view name;          ///< Parameter name (displayed in the UI)
+        PType type = PType::Bool;       ///< Parameter type
+        ParamValPtr pvalue = nullptr;   ///< Pointer to parameter's data member
         std::span<const std::string_view> valueNames;
+                    ///< List of names of parameter values (displayed in the UI)
     };
 
     // Virtual functions for program implementation
 
+    /// @brief Return the name of this program
+    /// @details This is displayed in the UI.
+    /// @return 
     virtual constexpr std::string_view GetName() const = 0;
 
-    // default implementation - no program parameters
-    virtual constexpr std::span<const ParamDesc> GetParams() const
-    {
-        return {};
-    }
+    /// @brief Return a list of the parameter descriptors for this program
+    /// @details Default implementation: empty list
+    /// @return 
+    virtual constexpr std::span<const ParamDesc> GetParams() const { return {}; }
 
+    /// @brief Initialize the program
+    /// @details This is called each time this program is started.
     virtual void Init() = 0;
 
-    // TODO: Instead of virtual Process(), could have virtual GetProcessFunc()
-    // that returns a static function pointer - that would be more efficient in
-    // AudioCallback
+    /// @brief Process input and produce output
+    /// @details This is called from the libDaisy audio callback.
+    /// It can process audio input from args.inbuf and write audio output to
+    /// args.outbuf. It can also handle CV/gate input and output.
+    /// @param args 
+    /// TODO: Instead of virtual Process(), could have virtual GetProcessFunc()
+    /// that returns a static function pointer - that would be more efficient in
+    /// AudioCallback
     virtual void Process(ProcessArgs& args) = 0;
 
+    /// @brief The @ref Animation to be displayed while this Program is running
+    /// @return 
     virtual Animation* GetAnimation() const = 0;
 
+    /// @brief Return the value of a parameter specified by a @ref ParamDesc
+    /// @details Note that a parameter of type Float is returned as an unsigned
+    /// value in the range [0, 100].
+    /// @param param 
+    /// @return 
     unsigned GetParamValue(const ParamDesc* param)
     {
         if (param && param->pvalue) {
@@ -94,6 +106,11 @@ public:
         }
     }
 
+    /// @brief Set the value of a parameter specified by a @ref ParamDesc
+    /// @details Note that a parameter of type Float is specified as an unsigned
+    /// value in the range [0, 100].
+    /// @param param 
+    /// @param n 
     void SetParamValue(const ParamDesc* param, unsigned n)
     {
         if (param && param->pvalue) {
@@ -112,21 +129,35 @@ public:
         }
     }
 
+    /// @brief Construct a @ref ProcessArgs
+    /// @details Contains audio input and output buffers and gate on/off flags
+    /// @param inbuf Audio input buffer
+    /// @param outbuf Audio output buffer
+    /// @return 
     static ProcessArgs MakeProcessArgs(daisy2::AudioInBuf inbuf, daisy2::AudioOutBuf outbuf)
     {
         return {
             .inbuf = inbuf,
             .outbuf = outbuf,
-            .fGateOn1 = HW::CVIn::GateOn(HW::CVIn::CV1),
-            .fGateOn2 = HW::CVIn::GateOn(HW::CVIn::CV2),
-            .fGateOnBut = HW::button.TurnedOn(),
-            .fGateOff1 = HW::CVIn::GateOff(HW::CVIn::CV1),
-            .fGateOff2 = HW::CVIn::GateOff(HW::CVIn::CV2),
-            .fGateOffBut = HW::button.TurnedOff()
+            .fGateOn = {
+                HW::CVIn::GateOn(HW::CVIn::CV1),
+                HW::CVIn::GateOn(HW::CVIn::CV2),
+                HW::button.TurnedOn()
+            },
+            .fGateOff = {
+                HW::CVIn::GateOn(HW::CVIn::CV1),
+                HW::CVIn::GateOn(HW::CVIn::CV2),
+                HW::button.TurnedOn()
+            }
         };
     }
 
 protected:
+    /// @brief Return the value of a specific parameter
+    /// @tparam PROG @ref Program subclass
+    /// @tparam T Parameter type
+    /// @tparam P Pointer to parameter's data member
+    /// @return Parameter value, of the appropriate type
     template<typename PROG, PType T, ParamVal PROG::* P>
     auto GetParamValue() const
     {
@@ -142,6 +173,11 @@ protected:
         }
     }
 
+    /// @brief Set the value of a specific parameter
+    /// @tparam PROG @ref Program subclass
+    /// @tparam T Parameter type
+    /// @tparam P Pointer to parameter's data member
+    /// @param v Parameter value, of the appropriate type
     template<typename PROG, PType T, ParamVal PROG::* P>
     void SetParamValue(auto v)
     {
@@ -164,6 +200,10 @@ protected:
         }
     }
 
+    /// @brief Ensure that only one CVSource parameter is set to "Pot"
+    /// @details It's convenient to automatically ensure that the potentiometer
+    /// is only connected to a single parameter.
+    /// @param pvalue 
     void FixCVSources(ParamValPtr pvalue)
     {
         // KLUDGE: Any CV sources set to "Pot", other than the one given, are

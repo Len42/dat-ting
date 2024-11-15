@@ -13,7 +13,7 @@
 /// 
 /// 1. Define each task as a subclass of Tasks::Task like this.
 /// A single instance of this class will be created automatically.
-/// @note This declaration uses the "curiously recurring template pattern".
+/// @note This declaration uses the "curiously recurring template pattern" (CRTP).
 /// @see https://en.wikipedia.org/wiki/Curiously_recurring_template_pattern
 /// @code
 /// class ExampleTask : public Tasks::Task<ExampleTask>
@@ -75,6 +75,7 @@ inline tasktime_t getCurrentMicros()
 }
 
 /// @brief  Base class for application-defined tasks
+/// @tparam SUB Subclass that is being declared (CRTP)
 template<typename SUB>
 class Task
 {

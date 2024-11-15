@@ -1,6 +1,6 @@
 #pragma once
 
-/// @brief Handle analog CV inputs
+/// @brief Handle analog control voltage inputs
 template<daisy2::DaisySeed2& seed, HWType hwType>
 class CVInBase
 {
@@ -15,7 +15,7 @@ public:
     static constexpr unsigned Fixed = ADC::_inCount; // for PARAM_CVSOURCE
     static constexpr unsigned Button = 2; // for PARAM_GATESOURCE
 
-    /// @brief Initialize all the ADC inputs for the CVs
+    /// @brief Initialize the ADC inputs for the CVs
     static void Init()
     {
         // ADC conversion speed is set to allow audio-rate modulation (to a
@@ -33,6 +33,11 @@ public:
 
 // CV Input
 public:
+    /// @brief Return the latest value read from the given ADC input
+    /// @details This just returns the current value from the ADC DMA buffer.
+    /// The actual ADC conversions are done in the background via DMA.
+    /// @param input ADC input channel
+    /// @return 16-bit ADC value
     static uint16_t GetRaw(ADC input)
     {
         if constexpr (isPrototype) {
@@ -44,6 +49,12 @@ public:
         return seed.adc.Get(input);
     }
 
+    /// @brief Return a bipolar CV value from the given ADC input
+    /// @details The optional return value is empty if input is not a valid ADC
+    /// input, e.g. the special identifier @ref Fixed.
+    /// @param input ADC input channel, or @ref Fixed
+    /// @return optional float nominally in [-1, +1] representing control voltage
+    /// range [-5, +5] but the value may be outside that range, or empty
     static std::optional<float> GetBipolar(unsigned input)
     {
         return GetRawOpt(input)
@@ -51,6 +62,12 @@ public:
                 { return ConvertCvBipolar(cv, input); });
     }
 
+    /// @brief Return a unipolar CV value from the given ADC input
+    /// @details The optional return value is empty if input is not a valid ADC
+    /// input, e.g. the special identifier @ref Fixed.
+    /// @param input ADC input channel, or @ref Fixed
+    /// @return optional float nominally in [0, +1] representing control voltage
+    /// range [0, 8] but the value may be outside that range, or empty
     static std::optional<float> GetUnipolar(unsigned input)
     {
         return GetRawOpt(input)
@@ -58,6 +75,13 @@ public:
                  { return ConvertCvUnipolar(cv, input); });
     }
 
+    /// @brief Return a unipolar CV value from the given ADC input, with
+    /// exponential response
+    /// @details The optional return value is empty if input is not a valid ADC
+    /// input, e.g. the special identifier @ref Fixed.
+    /// @param input ADC input channel, or @ref Fixed
+    /// @return optional float nominally in [0, +1] representing control voltage
+    /// range [0, 8] but the value may be outside that range, or empty
     static std::optional<float> GetUnipolarExp(unsigned input)
     {
         return GetRawOpt(input)
@@ -65,18 +89,26 @@ public:
                  { return ConvertCvUniExp(cv, input); });
     }
 
+    /// @brief Return a frequency corresponding to a 1V-per-octave pitch CV from
+    /// the given input
+    /// @param input ADC input channel
+    /// @return frequency in Hz
     static float GetFrequency(ADC input)
     {
         return ConvertFreqCvValue(GetRaw(input));
     }
 
+    /// @brief Return a MIDI note number corresponding to a 1V-per-octave pitch
+    /// CV from the given input
+    /// @param input ADC input channel
+    /// @return MIDI note number (may be fractional)
     static float GetNote(ADC input)
     {
-        return NoteFromCV(GetRaw(input));
+        return ConvertNoteCvValue(GetRaw(input));
     }
 
 protected:
-    /// @brief A single CV input: its GPIO pin and last-read value
+    /// @brief A single CV input: its GPIO pin and gate tracker
     struct Input
     {
         daisy::Pin pin;
@@ -84,7 +116,7 @@ protected:
     };
 
     /// @brief The list of CV inputs, specifying each one's input pin and gate status
-    /// @note CV1 is duplicated at the end so that it gets read twice in a row,
+    /// @note CV1 is duplicated at the end so that it gets read twice in a row
     /// because the ADC is free-running and each reading interferes with the next.
     /// CV1 is often used for 1V/oct pitch input so it needs to be as accurate as possible.
     static constinit inline Input inputs[] = {
@@ -179,7 +211,7 @@ protected:
         return PotExpTable::lookupInterpolate(adcValue);
     }
 
-    /// @brief Convert CV ADC reading to an ocillator frequency with 1 volt per octave scaling
+    /// @brief Convert CV ADC reading to an ocillator frequency with 1V-per-octave scaling
     /// @param cv 
     /// @return Oscillator frequency in Hz
     static constexpr float ConvertFreqCvValue(uint16_t cv)
@@ -187,31 +219,30 @@ protected:
         return CVFreqTable::lookupInterpolate(cv);
     }
 
-    /// @brief Convert CV ADC reading to a MIDI note with 1 volt per octave scaling
-    /// @note See below for calibration constants
-    /// @param cv 
-    /// @return MIDI note number (may be a fractional value)
-    static constexpr float NoteFromCV(unsigned cv)
-    {
-        return minNote
-            + numNotes * (float(int(cv) - int(adcCvFreqLo)) / float(adcCvFreqHi - adcCvFreqLo));
-    }
-
-    // Lookup table for ConvertFreqCvValue()
     static constexpr unsigned minNote = 12; // C0
     static constexpr unsigned numNotes = isPrototype ? (10 * 12) : (12 * 12);
     static constexpr unsigned adcCvFreqHi = isPrototype ? 63471 : 63460;
     static constexpr unsigned adcCvFreqLo = isPrototype ? 93 : 31620;
 
+    /// @brief Convert CV ADC reading to a MIDI note with 1V-per-octave scaling
+    /// @param cv 
+    /// @return MIDI note number (may be a fractional value)
+    static constexpr float ConvertNoteCvValue(unsigned cv)
+    {
+        return minNote
+            + numNotes * (float(int(cv) - int(adcCvFreqLo)) / float(adcCvFreqHi - adcCvFreqLo));
+    }
+
     /// @brief The frequency mapping table has 8192 entries (13-bit index)
     static constexpr unsigned numFreqTableBits = 13;
 
-    // NOTE: This table should really be in SDRAM but there's currently no way
-    // to get static initialized data into SDRAM.
+    /// @brief CV-to-frequency mapping table
+    /// @note This table should really be in SDRAM but there's currently no way
+    /// to get static initialized data into SDRAM.
     using CVFreqTable = LookupTable<float, numCvBits, numFreqTableBits,
         [](size_t index, size_t numValues) {
             unsigned cv = (index << (numCvBits - numFreqTableBits));
-            float note = NoteFromCV(cv);
+            float note = ConvertNoteCvValue(cv);
             return powf(2, (note - 69.0f) / 12.0f) * 440.0f; // daisysp::mtof(note);
         }>;
 
@@ -231,6 +262,7 @@ protected:
     /// @brief The exponential-response mapping tables have 128 entries (7-bit index)
     static constexpr unsigned numExpMapBits = 7;
 
+    /// @brief Exponential CV mapping table for the potentiometer
     using PotExpTable = LookupTable<float, numCvBits, numExpMapBits,
         [](size_t index, size_t numValues) {
             constexpr auto step = (1 << (numCvBits-numExpMapBits));
@@ -240,6 +272,7 @@ protected:
             return fl;
         }>;
 
+    /// @brief Exponential CV mapping table for external CV inputs
     using CvExpTable = LookupTable<float, numCvBits, numExpMapBits,
         [](size_t index, size_t numValues) {
             constexpr auto step = (1 << (numCvBits-numExpMapBits));
@@ -251,8 +284,8 @@ protected:
 
 // Gate Input
 public:
-    /// @brief Update the on/off state of all the gates
-    /// @remarks This must be called frequently (typically from the AudioCallback)
+    /// @brief Update the on/off state of all the gate inputs
+    /// @details This must be called frequently (typically from the AudioCallback)
     /// TODO: Use analog watchdog interrupts instead of polling
     static void UpdateGates()
     {
@@ -262,14 +295,20 @@ public:
     }
 
     /// @brief Return true if the gate is currently on (high) and false if it is off (low)
+    /// @param cvIn 
     /// @return 
     static bool IsGateOn(ADC cvIn) { return inputs[cvIn].gate.GetState(); }
 
-    /// @brief Return true if the gate has changed state since the last time
-    /// this was called
+    /// @brief Return true if the gate has gone high since the last time this
+    /// was called
+    /// @param cvIn 
     /// @return 
     static bool GateOn(ADC cvIn) { return inputs[cvIn].gate.TurnedOn(); }
 
+    /// @brief Return true if the gate has gone low since the last time this
+    /// was called
+    /// @param cvIn 
+    /// @return 
     static bool GateOff(ADC cvIn) { return inputs[cvIn].gate.TurnedOff(); }
 
 protected:
@@ -280,6 +319,8 @@ protected:
         }
     }
 
+    /// @brief Gate handler for a particular CV input channel
+    /// @details Uses @ref daisy2::Debouncer to debounce the gate input
     class Gate
     {
     public:

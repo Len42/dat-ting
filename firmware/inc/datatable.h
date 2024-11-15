@@ -5,13 +5,13 @@
 /// @brief Class template for static tables of pre-calculated data
 /// @tparam VALUE_T Type of table entries
 /// @tparam NUM_VALUES Number of table entries
-/// @tparam FUNC_CALC1 Function or lambda to calculate a single table entry
-///
+/// @tparam FUNC_CALC_1 Function or lambda to calculate a single table entry
+/// @details
 /// The data table is calculated and initialized at compile time.
 /// The table contains NUM_VALUES values of type VALUE_T.
-/// Each value is calculated by FUNC_CALC1 which has this signature:
+/// Each value is calculated by FUNC_CALC_1 which has this signature:
 /// @code
-/// VALUE_T FUNC_CALC1(size_t index, size_t numValues)
+/// VALUE_T FUNC_CALC_1(size_t index, size_t numValues)
 /// @endcode
 /// Acknowledgements
 /// ----------------
@@ -20,7 +20,7 @@
 /// Jason Turner - https://tinyurl.com/constexpr2021
 template<typename VALUE_T,
          size_t NUM_VALUES,
-         VALUE_T FUNC_CALC1(size_t index, size_t numValues)>
+         VALUE_T FUNC_CALC_1(size_t index, size_t numValues)>
 class DataTable
 {
 public:
@@ -38,15 +38,11 @@ public:
     consteval DataTable()
     {
         for (auto&& [index, value] : std::views::enumerate(data)) {
-            value = FUNC_CALC1(index, numValues);
+            value = FUNC_CALC_1(index, numValues);
         }
     }
 
     constexpr size_t size() const noexcept { return numValues; }
-
-    constexpr auto& getArray() noexcept { return data; }
-
-    constexpr const auto& getArray() const noexcept { return data; }
 
     constexpr value_type& operator[](size_t index) noexcept { return data[index]; }
 

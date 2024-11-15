@@ -3,13 +3,15 @@
 namespace daisy2
 {
 
+// TODO: REVIEW ALL THIS
+
 /// @brief A null or invalid GPIO pin specifier
 static constexpr daisy::Pin PinNull = daisy::Pin();
 
 extern "C" void HAL_GPIO_EXTI_Callback(uint16_t pinBit);
 
 /// @brief General Purpose I/O control 
-/// @remarks This is a re-implementation of daisy::GPIO with more features added.
+/// @details This is a re-implementation of daisy::GPIO with more features added.
 /// It's done by copying the whole class, not subclassing, due to member access issues.
 ///
 /// GPIO interrupts are supported on input pins. The caller may poll an input
@@ -30,20 +32,20 @@ public:
         INT_BOTH,   ///< Interrupt on rising and falling edge (also input)
     };
 
-    /// @brief Configures whether an internal Pull up or Pull down resistor is used. 
-    /// @remarks
-    /// Internal Pull up/down resistors are typically 40k ohms, and will be between
-    /// 30k and 50k.
-    /// When the Pin is configured in Analog mode, the pull up/down resistors are
-    /// disabled by hardware. 
+    /// @brief Specifies whether an internal pull-up or pull-down resistor is used. 
+    /// @details
+    /// Internal pull-up/down resistors are typically 40k ohms, and will be
+    /// between 30k and 50k.
+    /// When the Pin is configured in Analog mode, the pull up/down resistors
+    /// are disabled by hardware. 
     enum class Pull
     {
-        NOPULL,   ///< No pull up resistor
-        PULLUP,   ///< Internal pull up enabled
-        PULLDOWN, ///< Internal pull down enabled
+        NOPULL,   ///< No pull-up/down resistor
+        PULLUP,   ///< Internal pull-up enabled
+        PULLDOWN, ///< Internal pull-down enabled
     };
 
-    /// @brief Output speed controls the drive strength, and slew rate of the pin
+    /// @brief Output speed controls the drive strength and slew rate of the pin
     enum class Speed
     {
         LOW,
@@ -53,7 +55,7 @@ public:
     };
 
     /// @brief GPIO interrupt callback interface
-    /// @remarks Abstract base class
+    /// @details Abstract base class
     class IrqHandlerInterface
     {
     public:
@@ -145,7 +147,7 @@ public:
         }
     }
 
-    /// @brief Initialize the GPIO with a Configuration struct, and explicit pin 
+    /// @brief Initialize the GPIO with an explicit pin and a Configuration struct
     /// @param p Pin specifying the physical connection on the hardware
     /// @param cfg reference to a Config struct populated with the desired settings. 
     ///        Config::pin will be overwritten
@@ -170,7 +172,7 @@ public:
         Init({ .pin=pin, .mode=mode, .pull=pull, .speed=speed, .pirqHandler = pirqHandler });
     }
 
-    /// @brief Deinitializes the GPIO pin */
+    /// @brief Deinitialize the GPIO pin
     void DeInit() const {
         if (cfg_.pin.IsValid()) {
             HAL_GPIO_DeInit(port_base_addr_, (1 << cfg_.pin.pin));
@@ -178,13 +180,13 @@ public:
         }
     }
 
-    /// @brief Reads the state of the GPIO.
+    /// @brief Read the state of a GPIO pin that is configured as an input
     /// @return State of the GPIO unless Mode is set to Mode::Analog, then always false
     bool Read() const {
         return HAL_GPIO_ReadPin(port_base_addr_, (1 << cfg_.pin.pin));
     }
 
-    /// @brief Changes the state of the GPIO hardware when configured as an OUTPUT. 
+    /// @brief Set the state of a GPIO pin that is configured as an output
     /// @param state setting true writes an output HIGH, while setting false writes an output LOW.
     void Write(bool state) const {
         HAL_GPIO_WritePin(port_base_addr_,
@@ -192,23 +194,23 @@ public:
                         (GPIO_PinState)state);
     }
 
-    /// @brief flips the current state of the GPIO. 
-    /// If it was HIGH, it will go LOW, and vice versa.
+    /// @brief Toggle the current state of the GPIO
     void Toggle() const {
         HAL_GPIO_TogglePin(port_base_addr_, (1 << cfg_.pin.pin));
     }
 
-    /// Return a reference to the internal Config struct */
+    /// @brief Return a reference to the internal Config struct
+    /// @return 
     Config &GetConfig() { return cfg_; }
 
-    /// @brief Enable interrupt handling on this GPIO (but only if it was appropriately initialized) */
+    /// @brief Enable interrupt handling on this GPIO 
     void EnableIrq() const {
         if (cfg_.pin.IsValid() && cfg_.pirqHandler) {
             HAL_NVIC_EnableIRQ(mapGpiopinIrqtype[cfg_.pin.pin]);
         }
     }
 
-    /// @brief Disable interrupt handling on this GPIO */
+    /// @brief Disable interrupt handling on this GPIO
     void DisableIrq() const {
         if (cfg_.pin.IsValid()) {
             HAL_NVIC_DisableIRQ(mapGpiopinIrqtype[cfg_.pin.pin]);
@@ -219,7 +221,7 @@ public:
     /// false if it's been initialized already (for a pin on a different port).
     /// @param pin 
     /// @return 
-    static bool IsIrqAvailable(daisy::Pin pin) {
+    static constexpr bool IsIrqAvailable(daisy::Pin pin) {
         return pin.IsValid() && irqHandlers[pin.pin] == nullptr;
     }
 
@@ -228,7 +230,7 @@ protected:
 
     /// @brief Call the interrupt handler for the given pin
     /// @param pin Pin number (relative to the port the pin is in)
-    /// @remarks Helper function called from HAL_GPIO_EXTI_Callback
+    /// @details Helper function called from HAL_GPIO_EXTI_Callback
     static void CallIrqHandler(unsigned pin)
     {
         IrqHandlerInterface* phandler = nullptr;
@@ -261,10 +263,10 @@ protected:
         }
     }
 
-    /// @brief Internal copy of the pin configuration
+    /// @brief Pin configuration
     Config cfg_;
 
-    /// @brief Internal pointer to base address of the relevent GPIO register */
+    /// @brief Address of the GPIO register for the pin
     GPIO_TypeDef* port_base_addr_;
 
     /// @brief IRQ handlers for all the GPIO interrupts
@@ -273,8 +275,8 @@ protected:
         nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
     };
 
-    /// @brief Map from pin number to interrupt number (because having one interrupt per pin
-    /// would make too much sense)
+    /// @brief Mapping from pin number to interrupt number (because having one
+    /// interrupt per pin would make too much sense)
     static constexpr IRQn_Type mapGpiopinIrqtype[16] = {
     #if defined(STM32H7)
         EXTI0_IRQn,
@@ -297,21 +299,6 @@ protected:
         #error Unsupported STM version
     #endif
     };
-};
-
-/// @brief Simple interrupt handler that can be used to poll for interrupts
-class BasicIrqHandler : public GPIO::IrqHandlerInterface
-{
-public:
-    void OnInterrupt() override { fTriggered = true; }
-
-    /// @brief Return and reset the flag inicating whether an interrupt has
-    /// occurred since the last check
-    /// @return 
-    bool CheckTriggered() { return fTriggered.exchange(false); }
-
-protected:
-    std::atomic<bool> fTriggered = false;
 };
 
 } // namespace daisy2

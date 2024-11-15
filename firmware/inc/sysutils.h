@@ -3,6 +3,7 @@
 #include <cmath>
 #include <utility>
 
+// Macro that converts its argument to a string literal
 #define sym_to_string_helper(X) #X
 #define sym_to_string(X) sym_to_string_helper(X)
 
@@ -10,12 +11,24 @@
 /// does from its name
 #define getAndSet std::exchange
 
+/// @brief Compare two values for equality but cut them some slack
+/// @tparam T Argument type
+/// @param v1 Value to compare
+/// @param v2 Value to compare
+/// @param minDiff Minimum difference before v1 and v2 are considered different
+/// @return true if v1 and v2 are sufficiently different
 template<typename T>
 constexpr bool isDifferent(T v1, T v2, T minDiff)
 {
     return std::abs(v1 - v2) > minDiff;
 }
 
+/// @brief Compare two values for equality but cut them some slack
+/// @details Template specialization for unsigned values
+/// @param v1 
+/// @param v2 
+/// @param minDiff 
+/// @return 
 template<>
 constexpr bool isDifferent(unsigned v1, unsigned v2, unsigned minDiff)
 {
@@ -28,7 +41,7 @@ constexpr bool isDifferent(unsigned v1, unsigned v2, unsigned minDiff)
 /// the same sign as the integer part. (This makes printing simpler.)
 /// @note Return value is incorrect if the integer part doesn't fit into an int.
 /// @param x 
-/// @return 
+/// @return std::pair containing integer and fraction parts
 constexpr std::pair<int, unsigned> splitFloat(float x, unsigned fracDigits)
 {
     float flInt = 0;

@@ -20,14 +20,14 @@ template<typename SAMPLE>
 using AudioInBufBase = std::span<const SAMPLE>;
 
 /// @brief Stereo audio input buffer
-/// @remarks This is a representation of InterleavingInputBuffer, as a span
+/// @details This is a representation of InterleavingInputBuffer, as a span
 using AudioInBuf = AudioInBufBase<AudioSample>;
 
 template<typename SAMPLE>
 using AudioOutBufBase = std::span<SAMPLE>;
 
 /// @brief Stereo audio output buffer
-/// @remarks This is a representation of InterleavingOutputBuffer, as a span
+/// @details This is a representation of InterleavingOutputBuffer, as a span
 using AudioOutBuf = AudioOutBufBase<AudioSample>;
 
 template<typename BUF, typename WRAP>

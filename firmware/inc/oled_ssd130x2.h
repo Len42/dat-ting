@@ -16,6 +16,9 @@ class FixedSSD1306Driver : public daisy::SSD130xDriver<width, height, Transport>
     using BASE::buffer_;
 
 public:
+    /// @brief Fill the display with random "static", the color of television
+    /// tuned to a dead channel
+    /// @param on 
     void FillStatic(bool on)
     {
         // KLUDGE: sneaky conversion from byte buffer to word buffer to make
@@ -60,30 +63,38 @@ public:
         }
     }
 
+    /// @brief Return the pixel buffer as a range of bytes
+    /// @return 
     std::span<uint8_t> GetBuffer() { return std::span(buffer_); }
 
+    /// @brief Return the size of the pixel buffer
+    /// @return 
     constexpr unsigned GetBufSize() { return std::size(buffer_); }
 
+    /// @brief Save a copy of the display pixel buffer
+    /// @param buf Saved pixel buffer
     void SaveBuf(std::ranges::range auto& buf)
     {
         if (std::size(buf) != GetBufSize()) {
             DebugLog::PrintLine("ERROR: SaveBuf: incorrect buffer size");
         } else {
-            //std::ranges::copy(GetBuffer(), std::begin(buf));
-            for (unsigned i = 0; i < GetBufSize(); ++i) { buf[i] = GetBuffer()[i]; }
+            std::ranges::copy(GetBuffer(), std::begin(buf));
         }
     }
 
+    /// @brief Restore a saved copy of the pixel buffer to the display
+    /// @param buf Saved pixel buffer
     void RestoreBuf(std::ranges::range auto& buf)
     {
         if (std::size(buf) != GetBufSize()) {
             DebugLog::PrintLine("ERROR: RestoreBuf: incorrect buffer size");
         } else {
-            //std::ranges::copy(buf, std::begin(GetBuffer()));
-            for (unsigned i = 0; i < GetBufSize(); ++i) { GetBuffer()[i] = buf[i]; }
+            std::ranges::copy(buf, std::begin(GetBuffer()));
         }
     }
 
+    /// @brief Combine a saved pixel buffer with the display buffer using bitwise or
+    /// @param buf 
     void MergeBuf(std::ranges::range auto& buf)
     {
         if (std::size(buf) != GetBufSize()) {
@@ -95,6 +106,7 @@ public:
     }
 };
 
+/// @brief Specialized driver for 128x32 SPI SSD1306 OLED display
 using FixedSSD13064WireSpi128x32Driver
     = FixedSSD1306Driver<128, 32, daisy::SSD130x4WireSpiTransport>;
 

@@ -1,5 +1,9 @@
 #pragma once
 
+/// @brief @ref Program that pans the audio input back and forth between the
+/// stereo output channels using an LFO
+/// @details The LFO speed is set by the potentiometer.
+/// @todo Make the speed CV input selectable
 class ProgAutoPan : public Program
 {
 public:
@@ -33,6 +37,8 @@ public:
 protected:
     daisysp::Oscillator lfo;
 
+    /// @brief @ref Animation for @ref ProgAutoPan
+    /// @details Displays the left-right pan position using a bouncing ball
     class ProgAnimation : public Animation
     {
     public:

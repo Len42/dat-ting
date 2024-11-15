@@ -12,11 +12,11 @@ public:
     /// low (< 0), or not changing (== 0).
     /// @return [fHigh, fChanged] Is the debounced input high or low, and has
     /// it changed?
-    /// @remarks This should be called whenever the input goes high or low (when
+    /// @details This should be called whenever the input goes high or low (when
     /// detected by interrupts) or whenever the input is read (by polling).
     std::pair<bool, bool> Debounce(int updown)
     {
-        // TODO: FUBAR: std::lock_guard(mutex) required here, but std::mutex is
+        // FUBAR: std::lock_guard(mutex) required here, but std::mutex is
         // not supported by gcc stdlib in this environment. Sigh.
         // TODO: Make my own mutex out of std::atomic + a spin-lock.
         CheckSettled();
@@ -33,11 +33,11 @@ public:
 
     /// @brief Return the current (debounced) high/low value
     /// @return Is the debounced input currently high?
-    /// @remarks This function also checks the settling time and updates the state.
+    /// @details This function also checks the settling time and updates the state.
     /// It's equivalent to calling Debounce(0) but more efficient.
     bool GetValue()
     {
-        // TODO: FUBAR: std::lock_guard(mutex) required here, but std::mutex is
+        // FUBAR: std::lock_guard(mutex) required here, but std::mutex is
         // not supported by gcc stdlib in this environment. Sigh.
         // TODO: Make my own mutex out of std::atomic + a spin-lock.
         CheckSettled();

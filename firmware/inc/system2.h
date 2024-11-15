@@ -6,6 +6,7 @@ namespace daisy2 {
 class System2 : public daisy::System
 {
 public:
+    /// @brief System initialization
     static void Init()
     {
         InitTime();
@@ -15,12 +16,12 @@ public:
 public:
     /// @brief Return elapsed time since startup in CPU ticks
     /// @return 
-    /// @remarks Much more efficient than @ref daisy::System::GetTick
+    /// @details Much more efficient than @ref daisy::System::GetTick
     static uint32_t GetTick() { return TIM2->CNT; }
 
     /// @brief Return elapsed time since startup in microseconds
     /// @return 
-    /// @remarks Much more efficient than @ref daisy::System::GetUs
+    /// @details Much more efficient than @ref daisy::System::GetUs
     /// @bug GetUs() wraps around after only 20 seconds or so (both this version
     /// and the implementation in daisy::System)
     static uint32_t GetUs() { return GetTick() / clockFreqAdj; }
@@ -29,7 +30,7 @@ public:
 
     /// @brief Fixed version of GetUs() that doesn't wrap around
     /// @return Microseconds since startup (64 bits)
-    /// @remarks This returns an elapsed time value that doesn't wrap around
+    /// @details This returns an elapsed time value that doesn't wrap around
     /// every 21.5 seconds like @ref daisy::System::GetUs nor every 71.5 minutes
     /// like @ref GetUs.
     /// The return value is 64 bits so it doesn't wrap around basically ever.
@@ -37,12 +38,11 @@ public:
     /// to correctly keep track of when GetUs() wraps around.
     static timeus_t GetUsLong()
     {
-        // NOTE: not interrupt-safe
-        // TODO: add a mutex if necessary
+        // NOTE: TODO: not interrupt-safe
         static uint32_t tShortSave = 0;
         static timeus_t tOffset = 0;
+        // tWrap is the max value returned by GetUs()
         static constexpr uint32_t tWrap = uint32_t(0x100000000ull / 200);
-            // tWrap == max returned by GetUs()
         uint32_t tShort = GetUs();
         if (tShort < tShortSave) {
             tOffset += tWrap;

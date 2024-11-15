@@ -42,10 +42,10 @@ enum class HWType { Prototype, Module };
 #include "UITask.h"
 
 /// @brief The list of tasks to execute
-/// @remarks Excludes the AudioCallback and related timing-critical tasks
+/// @details Excludes the AudioCallback and related timing-critical tasks
 static constexpr tasks::TaskList<
     AnimationTask
-    ,UIImpl::UIBase<ProgramList, programs>::Task
+    ,UIImpl::UI<ProgramList, programs>::Task
     //,BlinkTask
     //,ButtonLedTask
     //,GateLedTask
@@ -60,8 +60,10 @@ int main()
     // Initialize the hardware
     HW::Init();
 
-    // Start audio processing by running a Program
-    ProgramList::StartProcessing();
+    // Start audio processing
+    HW::StartProcessing(ProgramList::ProcessingCallback);
+
+    // Start a Program running
     // TODO: Get the previously-running program from saved settings
     programs.RunProgram(programs.GetList().front());
 

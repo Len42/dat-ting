@@ -3,10 +3,10 @@
 namespace daisy2
 {
 
-/// @brief Handler for on/off switches (replaces daisy::Switch because I don't like that one)
-/// @remarks The input pin's GPIO interrupt is used to keep track of the switch
-/// state, so constant polling is not required. (Note that this limits the
-/// choice of input pins for multiple switches.)
+/// @brief Handler for on/off switches (replaces daisy::Switch because I don't like it)
+/// @details The input pin's GPIO interrupt is used to keep track of the switch
+/// state so constant polling is not required. (Note that this limits the choice
+/// of input pins for multiple switches.)
 ///
 /// An optional callback can be given to receive notifications whenever the
 /// switch state changes. Alternatively the Switch may be polled by calling IsOn().
@@ -20,7 +20,7 @@ public:
     enum class Polarity { onLow, onHigh };
 
     /// @brief On/off callback interface
-    /// @remarks Abstract base class
+    /// @details Abstract base class
     /// @note OnChange may be called in an interrupt context
     class CallbackInterface
     {
@@ -39,7 +39,7 @@ public:
 
     /// @brief Initialize a switch input on a GPIO pin
     /// @param cfg Switch configuration options
-    /// @remarks This function initializes the given GPIO pin as an input.
+    /// @details This function initializes the given GPIO pin as an input.
     void Init(const Config& cfg)
     {
         config = cfg;
@@ -81,17 +81,14 @@ public:
     /// @brief Return true if the switch turned on (transitioned off -> on)
     /// since the last time this was called
     /// @return 
-    /// @remarks This is a helper for polling pushbuttons.
+    /// @details This is a helper for polling pushbuttons.
     bool TurnedOn() { return turnedOn.exchange(false); }
 
     /// @brief Return true if the switch turned off (transitioned on -> off)
     /// since the last time this was called
     /// @return 
-    /// @remarks This is a helper for polling pushbuttons.
+    /// @details This is a helper for polling pushbuttons.
     bool TurnedOff() { return turnedOff.exchange(false); }
-
-// TODO: WasReleased() so the button can be used as a gate
-// (or TurnedOn()/TurnedOff())
 
 protected:
     /// @brief Interrupt handler to update the current switch state
@@ -141,12 +138,11 @@ protected:
     /// @brief Convert a digital high/low input value to a logical switch on/off value
     /// @param fHigh Is the digital input high?
     /// @return Is the switch on?
-    /// @remarks This is where the Polarity is accounted for.
+    /// @details This is where the Polarity is accounted for.
     bool OnOffFromHighLow(bool fHigh) {
         return (fHigh == (config.polarity == Polarity::onHigh));
     }
 
-// Data members
 protected:
     Config config;
     GPIO gpio;

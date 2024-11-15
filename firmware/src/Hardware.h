@@ -1,29 +1,49 @@
 #pragma once
 
 /// @brief Hardware definitions base template
+/// @tparam HWTYPE Hardware type (Prototype or Module)
 template<HWType HWTYPE>
 class HWBase
 {
 public:
+    /// @brief Hardware type (Prototype or Module)
     static constexpr HWType hwType = HWTYPE;
 
+    /// @brief Abbreviation for daisy2::System2 and daisy::System
     using Sys = daisy2::System2;
 
+    /// @brief The Daisy Seed object
     static inline daisy2::DaisySeed2 seed;
 
+    /// @brief GPIO pin definitions
     using Pins = PinDefs<hwType>;
 
+    /// @brief The OLED display type
     using OledDisplay = daisy2::OledDisplay2<daisy2::FixedSSD13064WireSpi128x32Driver>;
+    /// @brief The OLED display object
     static inline OledDisplay display;
 
+    /// @brief The rotary encoder
     static inline daisy2::Encoder encoder;
 
+    /// @brief The pushbutton
     static inline daisy2::Switch button;
 
+    /// @brief Control voltage inputs
     using CVIn = CVInBase<seed, hwType>;
 
+    /// @brief Control voltage outputs
     using CVOut = CVOutBase<seed>;
 
+    /// @brief Sample rate for audio processing
+    /// @details Compile-time constant that matches @ref daisy::DaisySeed::AudioSampleRate
+    static constexpr unsigned sampleRate = 48000u;
+
+    /// @brief Sample rate setting corresponding to @ref sampleRate
+    static constexpr daisy::SaiHandle::Config::SampleRate sampleRateSetting =
+        daisy::SaiHandle::Config::SampleRate::SAI_48KHZ;
+
+    /// @brief Block size for audio processing
     static constexpr size_t audioBlockSize = 4;
 
 public:
@@ -48,7 +68,7 @@ public:
 
         // Initialize the OLED display
         OledDisplay::Config dispConfig;
-        dispConfig.driver_config.transport_config.pin_config = {
+        dispConfig.transport_config.pin_config = {
             .dc = Pins::DisplayDC,
             .reset = Pins::DisplayReset
         };
@@ -76,11 +96,25 @@ public:
         // Initialize the CV inputs
         CVIn::Init();
 
-        // Initialize the CV output
+        // Initialize the CV outputs
         CVOut::Init();
     }
-};
 
+    /// @brief Start audio processing
+    static void StartProcessing(daisy2::AudioCallback processingCallback)
+    {
+        static_assert(audioBlockSize > 0);
+        seed.SetAudioSampleRate(sampleRateSetting);
+        seed.SetAudioBlockSize(audioBlockSize);
+        if (seed.AudioSampleRate() != sampleRate) {
+            daisy2::DebugLog::PrintLine("WARNING: Sample rate mismatch");
+        }
+        seed.StartAudio(processingCallback);
+    }
+
+    /// @brief Stop audio processing
+    static void StopProcessing() { seed.StopAudio(); }
+};
 
 /// @brief Set the type of hardware being used
 /// @note HW_TYPE must be #defined

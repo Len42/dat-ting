@@ -29,7 +29,7 @@ class DaisySeed2 : public daisy::DaisySeed
 // Initialization
 public:
     /// @brief Initialize the Daisy Seed hardware
-    /// @remarks Calls the base class Init() and does additional initialization
+    /// @details Calls the base class Init() and does additional initialization
     void Init() {
         daisy::DaisySeed::Init();
         System2::Init();
@@ -47,7 +47,7 @@ public:
 // CheckBoardVersion() fix
 public:
     /// @brief Seed hardware versions
-    /// @remarks Like @ref daisy::DaisySeed::BoardVersion but with DAISY_SEED_REV7 added.
+    /// @details Like @ref daisy::DaisySeed::BoardVersion but with DAISY_SEED_REV7 added.
     /// The values match @ref daisy::DaisySeed::BoardVersion so they are not in release order.
     enum class BoardVersion {
         /** Daisy Seed 1 (Rev4) - original version, AK4556 codec */
@@ -75,7 +75,7 @@ public:
 // Audio processing enhancements
 public:
     /// @brief Begin audio processing
-    /// @remarks This is an overload of @ref daisy::DaisySeed::StartAudio with nicer arguments.
+    /// @details This is an overload of @ref daisy::DaisySeed::StartAudio with nicer arguments.
     /// @param proc Audio processing callback
     void StartAudio(AudioCallback proc)
     {
@@ -83,7 +83,7 @@ public:
         daisy::DaisySeed::StartAudio(AudioCallbackWrapper);
     }
 
-    /// @brief Re-implementation of @ref daisy::DaisySeed::StartAudio because it's hidden
+    /// @brief Re-implementation of function in base class because it's hidden
     /// @param cb Audio processing callback
     void StartAudio(daisy::AudioHandle::InterleavingAudioCallback cb)
     {
@@ -91,7 +91,7 @@ public:
     }
 
     /// @brief Set the audio processing callback
-    /// @remarks This is an overload of @ref daisy::DaisySeed::ChangeAudioCallback with nicer arguments.
+    /// @details This is an overload of @ref daisy::DaisySeed::ChangeAudioCallback with nicer arguments.
     /// @param proc Audio processing callback
     void ChangeAudioCallback(AudioCallback proc)
     {
@@ -99,7 +99,7 @@ public:
         daisy::DaisySeed::ChangeAudioCallback(AudioCallbackWrapper);
     }
 
-    /// @brief Re-implementation of @ref daisy::DaisySeed::ChangeAudioCallback because it's hidden
+    /// @brief Re-implementation of function in base class because it's hidden
     /// @param cb Audio processing callback
     void ChangeAudioCallback(daisy::AudioHandle::InterleavingAudioCallback cb)
     {

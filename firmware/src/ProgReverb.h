@@ -1,13 +1,16 @@
 #pragma once
 
-// BUG: ReverbSc variable should be a static data member in ProgReverb but then
-// it cannot be stored in SDRAM (DSY_SDRAM_BSS does nothing in that case).
-daisysp::ReverbSc DSY_SDRAM_BSS reverbSc1;
+/// @brief Stereo reverb program
+/// BUG: Should be a static data member in ProgReverb but then it cannot be
+/// stored in SDRAM (DSY_SDRAM_BSS does nothing in that case).
+static daisysp::ReverbSc DSY_SDRAM_BSS reverbSc1;
 
+/// @brief Stereo reverb program
 class ProgReverb : public Program
 {
     using this_t = ProgReverb;
 
+    // Declare the configurable parameters of this program
     #define PROG_PARAMS(ITEM) \
         PARAM_CVSOURCE(ITEM, FeedbackControl, "Feedback control", Fixed) \
         PARAM_CVSOURCE(ITEM, FilterControl, "Filter control", Fixed) \
@@ -54,29 +57,38 @@ public:
     Animation* GetAnimation() const override { return &animation; }
 
 protected:
-
+    /// @brief Return the feedback amount
+    /// @return float in [0, 1]
     float GetFeedbackAmount() const { return feedbackAmount; }
 
-    // NOTE: No actual return value, but must return a std::optional because the
-    // caller requires it
+    /// @brief Set the feedback amount
+    /// @details Amount of 1.0 will give more than unity feedback.
+    /// @param amount float in [0, 1]
     void SetFeedbackAmount(float amount)
     {
         // Map the CV to a range that goes a bit over 1.0
-        // TODO: Calibrate this
         feedbackAmount = rescale(amount, 0.0f, 0.95f, 0.0f, 1.1f);
         reverbSc1.SetFeedback(feedbackAmount);
     }
 
+    /// @brief Get the filter cutoff frequency
+    /// @return float in [0, 1]
     float GetFilterCutoff() const { return filterCutoff / (sampleRate / 2); }
     
+    /// @brief Set the filter cutoff frequency
+    /// @param cutoff float in [0, 1]
     void SetFilterCutoff(float cutoff)
     {
         filterCutoff = cutoff * (sampleRate / 2);
         reverbSc1.SetLpFreq(filterCutoff);
     }
 
+    /// @brief Get the effect mix level
+    /// @return float in [0, 1]
     float GetMixLevel() const { return effectMixLevel; }
 
+    /// @brief Set the effect mix level
+    /// @param mixLevel float in [0, 1]
     void SetMixLevel(float mixLevel)
     {
         // KLUDGE: Map mixLevel so there's a dead zone at each end, otherwise we
@@ -97,6 +109,7 @@ private:
 
     daisysp::CrossFade mix;
 
+    /// @brief Animation for this program shows input and output amplitudes
     static inline AnimAmplitude<3> animation;
 
 protected:
@@ -105,6 +118,7 @@ protected:
 public:
     friend class DebugTask;
 
+    /// @brief @ref tasks::Task that prints some info (via serial output)
     class DebugTask : public tasks::Task<DebugTask>
     {
     public:
@@ -115,7 +129,8 @@ public:
         void execute()
         {
             if (theProgram) {
-                // DEBUG
+                // TODO
+                //daisy2::DebugLog::PrintLine("");
             }
         }
     };

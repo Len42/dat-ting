@@ -65,16 +65,31 @@ public:
         return alignedRect;
     }
 
-    // Must re-define hidden functions in the base class
-
+    /// @brief Re-implementation of function in base class because it's hidden
+    /// @param ch 
+    /// @param font 
+    /// @param on 
+    /// @return 
     char WriteChar(char ch, FontDef font, bool on) override {
         return Base::WriteChar(ch, font, on);
     }
 
+    /// @brief Re-implementation of function in base class because it's hidden
+    /// @param str 
+    /// @param font 
+    /// @param on 
+    /// @return 
     char WriteString(const char* str, FontDef font, bool on) override {
         return Base::WriteString(str, font, on);
     }
 
+    /// @brief Re-implementation of function in base class because it's hidden
+    /// @param str 
+    /// @param font 
+    /// @param boundingBox 
+    /// @param alignment 
+    /// @param on 
+    /// @return 
     daisy::Rectangle WriteStringAligned(const char* str,
                                         const FontDef& font,
                                         daisy::Rectangle boundingBox,
@@ -85,7 +100,10 @@ public:
     }
 
 protected:
-    // re-implementation of a function declared private in base class
+    /// @brief Re-implementation of function in base class because it's hidden
+    /// @param text 
+    /// @param font 
+    /// @return 
     daisy::Rectangle GetTextRect(const char* text, const FontDef& font)
     {
         const auto numChars = strlen(text);

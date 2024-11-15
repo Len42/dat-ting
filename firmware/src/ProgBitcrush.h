@@ -1,9 +1,13 @@
 #pragma once
 
+/// @brief Bitcrusher @ref Program
+/// @details Bit depth and sample rate are set using the potentiometer.
+/// @todo Flexible CV control of bit depth and sample rate
 class ProgBitcrush : public Program
 {
     using this_t = ProgBitcrush;
 
+    // Declare the configurable parameters of this program
     #define PARAM_VALUES(ITEM) \
         ITEM(BitDepth, "Bit depth") \
         ITEM(SampleRate, "Sample rate")
@@ -77,6 +81,9 @@ private:
 protected:
     static inline this_t* theProgram = nullptr; // for ProgAnimation and DebugTask
 
+    /// @brief @ref Animation for @ref ProgBitcrush
+    /// @details Displays a waveform with a symbolic (not accurate) representation
+    /// of the bit depth and sample rate.
     class ProgAnimation : public Animation
     {
     public:
@@ -88,7 +95,7 @@ protected:
 
             // Draw a crushed triangle wave, illustrating the current selected parameters
             unsigned bitDepth = theProgram ? (theProgram->GetBitDepth() / 4) : 4;
-            float increment = theProgram ? (theProgram->GetCrushRate() / 48000) : 1;
+            float increment = theProgram ? (theProgram->GetCrushRate() / HW::sampleRate) : 1;
             int y = 0;
             int yStep = -1;
             int yCrushed = y;
@@ -128,6 +135,8 @@ protected:
 public:
     friend class DebugTask;
 
+    /// @brief @ref tasks::Task that prints (via serial output) the bit depth
+    /// and sample rate
     class DebugTask : public tasks::Task<DebugTask>
     {
     public:

@@ -1,5 +1,6 @@
 #pragma once
 
+/// @brief Variable-shape VCO program
 class ProgVariableOsc : public Program
 {
     using this_t = ProgVariableOsc;
@@ -12,13 +13,17 @@ class ProgVariableOsc : public Program
     #undef PROG_PARAMS
 
 protected:
+    /// @brief Oscillator settings
     struct OscParams
     {
-        float freq;
-        float shape;
-        float width;
+        float freq;     ///< Frequency
+        float shape;    ///< Wave shape parameter
+        float width;    ///< Pulse width parameter
     };
 
+    /// @brief Update the oscillator settings from the current CV inputs
+    /// @param args 
+    /// @param pparams 
     void UpdateOscParams(const ProcessArgs& args, OscParams* pparams)
     {
         pparams->freq = HW::CVIn::GetFrequency(HW::CVIn::CV1);
@@ -27,14 +32,17 @@ protected:
     }
 
 protected:
-    /// @brief Base class for oscillator implementation (also used for waveform display)
-    /// @tparam SUB 
+    /// @brief Base class for oscillator implementation
+    /// @details There's a subclass for the actual oscillator and a subclass for
+    /// waveform display.
+    /// @tparam SUB VarOscBase subclass (CRTP)
     template<typename SUB>
     class VarOscBase
     {
         SUB* subclass() { return static_cast<SUB*>(this); }
 
     public:
+        /// @brief Initialize the oscillator
         void Init()
         {
             auto sampleRate = HW::seed.AudioSampleRate();
@@ -43,6 +51,10 @@ protected:
             osc.SetSync(false);
         }
 
+        /// @brief Produce output using a @ref daisysp::VariableShapeOscillator
+        /// @details Called from @ref Program::Process
+        /// @param args 
+        /// @param params 
         void Process(ProcessArgs& args, const OscParams& params)
         {
             // Set the oscillator frequency, either from the CV input or
@@ -60,6 +72,7 @@ protected:
         }
 
     protected:
+        /// @brief The oscillator
         daisysp::VariableShapeOscillator osc;
     };
 
@@ -90,6 +103,7 @@ protected:
         template<typename SUB> friend class VarOscBase;
     };
 
+    /// @brief @ref Animation for @ref ProgVariableOsc
     class ProgAnimation : public Animation
     {
     public:
@@ -97,8 +111,7 @@ protected:
 
         bool Step(unsigned step) override
         {
-            // Set up a bogus Program and output buffer to calculate the
-            // displayed waveform
+            // Set up a phony oscillator to generate a waveform for the display
             oscAnim.Init();
             static daisy2::AudioSample inTemp[animBufSize]; // needed, but just a dummy value
             daisy2::AudioInBuf inbuf(inTemp);
@@ -127,6 +140,8 @@ protected:
             return true;
         }
 
+        /// @brief Set the oscillator parameters to use for animation
+        /// @param oscParamsNew 
         void SetOscParams(const OscParams& oscParamsNew) { oscParams = oscParamsNew; }
 
     protected:

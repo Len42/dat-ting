@@ -14,12 +14,13 @@ public:
 };
 
 /// @brief Animation runner
-/// @remarks Runs a single animation.
+/// @details Runs a single animation. An instance of this class is used by
+/// @ref AnimationTask.
 class Animator
 {
 public:
 	/// @brief Start running the given @ref Animation
-    /// @remarks @ref AnimationTask will actually run the animation by calling
+    /// @details @ref AnimationTask will actually run the animation by calling
     /// Step().
 	/// @param animation 
 	void Start(Animation* animation)
@@ -39,7 +40,7 @@ public:
     void Stop() { fRunning = false; }
 
 	/// @brief Display the next step (frame) of the currently-running @ref Animation
-    /// @remarks Does nothing if no animation is running. Checks the value
+    /// @details Does nothing if no animation is running. Checks the value
     /// returned by @ref Animation::Step to see if the animation is finished.
 	/// @return true if the animation should continue running, false if it is finished
 	bool Step()
@@ -51,9 +52,11 @@ public:
         }
     }
 
+    /// @brief Check if an animation is running
+    /// @return 
     bool IsRunning() const { return fRunning; }
 
-    /// @brief Nominal frame rate is 20 fps.
+    /// @brief Animation frame rate - nominally 20 fps
     static constexpr unsigned framePeriodUs = 50'000;
 
 protected:
@@ -62,7 +65,7 @@ protected:
 	unsigned step = 0;
 };
 
-/// @brief Task to display the currently-running animation, if any
+/// @brief @ref tasks::Task to display the currently-running animation, if any
 class AnimationTask : public tasks::Task<AnimationTask>
 {
 public:
@@ -72,13 +75,16 @@ public:
 
     void execute() { StepAnim(); }
 
-// Static functions run an Animation on the "main" Animator, which is the one
-// displayed by this AnimationTask
 public:
+	/// @brief Start displaying an animation
+	/// @param animation 
 	static void StartAnim(Animation* animation) { animator.Start(animation); }
 
+    /// @brief Stop displaying the current animation
     static void StopAnim() { animator.Stop(); }
 
+	/// @brief Display the next step (frame) of the current animation
+	/// @return 
 	static bool StepAnim() { return animator.Step(); }
 
 protected:
@@ -86,9 +92,9 @@ protected:
 };
 
 /// @brief Animation sequence
-/// @remarks This is an animation that executes several sub-animations in sequence.
+/// @details This is an animation that executes several sub-animations in sequence.
 /// It ends when all the sub-animations have run to completion.
-/// @tparam ...ANIMS 
+/// @tparam ...ANIMS A list of @ref Animation subclasses which are run in order
 template<typename... ANIMS>
 class AnimationSeq : public Animation
 {
@@ -160,11 +166,12 @@ public:
         recentSamples.clear();
     }
 
+    /// @brief Update the animation using the samples from the last several
+    /// animation updates, including lastSample which was set by SetAmplitude().
+    /// @param step 
+    /// @return 
     bool Step(unsigned step) override
     {
-        // Update the animation using the samples from the last several
-        // animation updates, including lastSample which was set by
-        // SetAmplitude().
         recentSamples.push(lastSample);
         lastSample = { }; // reset max sample value for next time
         HW::display.Fill(false);
@@ -184,7 +191,7 @@ public:
     }
 
     /// @brief Save an audio sample to be used in the next animation update
-    /// @remarks This may be called many times (e.g. from AudioCallback) but the
+    /// @details This may be called many times (e.g. from AudioCallback) but the
     /// value won't be used until the next animation update.
     /// @param samp A stereo audio sample
     void SetAmplitude(daisy2::AudioSample samp)
@@ -193,7 +200,7 @@ public:
     }
 
     /// @brief Save an audio sample to be used in the next animation update
-    /// @remarks This may be called many times (e.g. from AudioCallback) but the
+    /// @details This may be called many times (e.g. from AudioCallback) but the
     /// value won't be used until the next animation update.
     /// @param ...ampls The amplitude(s) of an audio sample - any number of channels
     void SetAmplitude(std::convertible_to<float> auto... ampls)

@@ -3,6 +3,9 @@
 #include <utility>
 #include <cstddef>
 
+/// @brief Ring buffer (circular buffer) with fixed capacity
+/// @tparam T 
+/// @tparam CAPACITY 
 template<typename T, size_t CAPACITY>
 class RingBuf
 {
@@ -28,10 +31,16 @@ public:
     using const_iterator = ForwardIterBase<const this_t, value_type, const value_type>;
 
 public:
+    /// @brief Check if the buffer is empty
+    /// @return 
     constexpr bool empty() const noexcept { return read == write; }
 
+    /// @brief Check if the buffer is full
+    /// @return 
     constexpr bool full() const noexcept { return ((write + 1) % bufSize) == read; }
 
+    /// @brief Return the number of elements in the buffer
+    /// @return 
     constexpr size_t size() const noexcept {
         if (write >= read)
             return write - read;
@@ -39,44 +48,59 @@ public:
             return write + bufSize - read;
     }
 
+    /// @brief Return the maximum number of elements that can be stored in the buffer
+    /// @return 
     constexpr size_t max_size() const noexcept { return bufCapacity; }
 
+    /// @brief Remove all elements from the buffer
     constexpr void clear() noexcept { read = write = 0; }
 
+    /// @brief Remove (pop) elements until the buffer contains no more than smallerSize elements
+    /// @param smallerSize 
     constexpr void shrink(size_t smallerSize) noexcept {
         while (size() > smallerSize) pop();
     }
 
+    /// @brief Insert an element at the end of the buffer. If necessary, discard
+    /// an element from the start of the buffer to make room.
+    /// @param val 
     constexpr void push(const T& val) noexcept {
         if (full()) pop();
         push_if_room(val);
     }
 
+    /// @brief Insert an element at the end of the buffer. If necessary, discard
+    /// an element from the start of the buffer to make room.
+    /// @param val 
     constexpr void push(T&& val) noexcept {
         if (full()) pop();
         push_if_room(std::move(val));
     }
 
+    /// @brief Insert an element at the end of the buffer. If the buffer is full
+    /// do nothing.
+    /// @param val 
     constexpr void push_if_room(const T& val) noexcept {
-        // There's no error handling, so if full just do nothing.
-        // (Do not pop() to make room because that messes up concurrency.)
         if (!full()) {
             buf[write] = val;
             write = (write + 1) % bufSize;
         }
     }
 
+    /// @brief Insert an element at the end of the buffer. If the buffer is full
+    /// do nothing.
+    /// @param val 
     constexpr void push_if_room(T&& val) noexcept {
-        // There's no error handling, so if full just do nothing.
-        // (Do not pop() to make room because that messes up concurrency.)
         if (!full()) {
             buf[write] = std::move(val);
             write = (write + 1) % bufSize;
         }
     }
 
+    /// @brief Remove the first element in the buffer. If the buffer is empty
+    /// return a default value.
+    /// @return 
     constexpr value_type pop() noexcept {
-        // There's no error handling, so if empty just return a null/default value.
         if (empty()) {
             return dummyVal;
         } else {
@@ -86,6 +110,9 @@ public:
         }
     }
 
+    /// @brief Return a reference to the first element in the buffer (without
+    /// removing it). If the buffer is empty return a default element.
+    /// @return 
     constexpr reference front() noexcept {
         if (empty()) {
             return dummyVal;
@@ -94,6 +121,9 @@ public:
         }
     }
 
+    /// @brief Return a reference to the first element in the buffer (without
+    /// removing it). If the buffer is empty return a default element.
+    /// @return 
     constexpr const_reference front() const noexcept {
         if (empty()) {
             return dummyVal;
@@ -102,6 +132,9 @@ public:
         }
     }
 
+    /// @brief Return a reference to the last element in the buffer (without
+    /// removing it). If the buffer is empty return a default element.
+    /// @return 
     constexpr reference back() noexcept {
         if (empty()) {
             return dummyVal;
@@ -111,6 +144,9 @@ public:
         }
     }
 
+    /// @brief Return a reference to the last element in the buffer (without
+    /// removing it). If the buffer is empty return a default element.
+    /// @return 
     constexpr const_reference back() const noexcept {
         if (empty()) {
             return dummyVal;
@@ -120,16 +156,28 @@ public:
         }
     }
 
+    /// @brief Return an iterator to the start of the buffer
+    /// @return 
     constexpr iterator begin() noexcept { return iterator(this, read); }
 
+    /// @brief Return an iterator to the end of the buffer
+    /// @return 
     constexpr iterator end() noexcept { return iterator(this, write); }
 
+    /// @brief Return an iterator to the start of the buffer
+    /// @return 
     constexpr const_iterator begin() const noexcept { return const_iterator(this, read); }
 
+    /// @brief Return an iterator to the end of the buffer
+    /// @return 
     constexpr const_iterator end() const noexcept { return const_iterator(this, write); }
 
+    /// @brief Return an iterator to the start of the buffer
+    /// @return 
     constexpr iterator cbegin() const noexcept { return begin(); }
 
+    /// @brief Return an iterator to the end of the buffer
+    /// @return 
     constexpr iterator cend() const noexcept { return end(); }
 
 protected:
@@ -146,6 +194,10 @@ protected:
     value_type dummyVal{ };
 
 protected:
+    /// @brief Iterator implementation for RingBuf
+    /// @tparam RINGBUF_T 
+    /// @tparam VALUE_T 
+    /// @tparam REFVAL_T 
     template<typename RINGBUF_T, typename VALUE_T, typename REFVAL_T>
     class ForwardIterBase
     {
@@ -187,12 +239,23 @@ protected:
     };
 };
 
+/// @brief A running average of the most recent values in a sequence
+/// @details The most recent NUM_SAMPLES values are stored in a buffer.
+/// @tparam T 
+/// @tparam NUM_SAMPLES 
 template<typename T, size_t NUM_SAMPLES>
 class RunningAverage
 {
 public:
+    /// @brief Return the current average of the recent values
+    /// @return 
     constexpr T getAverage() const { return average; }
 
+    /// @brief Update the running average
+    /// @details A new value is added to the running average and the oldest
+    /// value is removed.
+    /// @param newVal New value to include in the running average
+    /// @return The updated average value
     constexpr T update(T newVal) {
         if (buf.full()) {
             T oldVal = buf.front();

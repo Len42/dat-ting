@@ -1,7 +1,9 @@
 #pragma once
 
+/// @brief GPIO pin definitions - base template declaration
 template<HWType type> struct PinDefs;
 
+/// @brief GPIO pin definitions for Prototype hardware
 template<>
 struct PinDefs<HWType::Prototype>
 {
@@ -26,6 +28,7 @@ struct PinDefs<HWType::Prototype>
 };
 
 
+/// @brief GPIO pin definitions for Module hardware
 template<>
 struct PinDefs<HWType::Module>
 {

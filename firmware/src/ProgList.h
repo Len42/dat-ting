@@ -9,43 +9,49 @@
 #include "ProgBitcrush.h"
 #include "ProgQuant.h"
 
+/// @brief @ref Program runner
+/// @details Contains a list of the available programs
+/// @tparam ...PROGS 
 template<typename... PROGS>
 class ProgramListBase
 {
 public:
+    /// @brief Compile-time constructor that initializes the list of programs
     consteval ProgramListBase()
     {
         int i = 0;
         ((progs[i++] = &progInstance<PROGS>), ...);
     }
 
+    /// @brief Return the list of programs as a range
+    /// @return 
     std::span<Program*> GetList()
     {
         return std::span<Program*>(std::begin(progs), std::size(progs));
     }
 
+    /// @brief Run a program
+    /// @details Initializes the @ref Program and sets it as the currently-running program.
+    /// @param prog 
     static void RunProgram(Program* prog)
     {
         currentProgram = nullptr;
-        prog->Init();
+        if (prog) {
+            prog->Init();
+        }
         currentProgram = prog;
     }
 
+    /// @brief Return the currently-running program
+    /// @return 
     static Program* GetCurrentProgram() { return currentProgram; }
-
-    static void StartProcessing()
-    {
-        static_assert(HW::audioBlockSize > 0);
-        HW::seed.SetAudioBlockSize(HW::audioBlockSize);
-        HW::seed.StartAudio(ProcessingCallback);
-    }
-
-    static void StopProcessing() { HW::seed.StopAudio(); }
 
     // DEBUG
     static unsigned GetResetSampleCount() { return sampleCount.exchange(0); }
 
-protected:
+    /// @brief Audio processing callback that calls the current @ref Program
+    /// @param inbuf Audio input buffer
+    /// @param outbuf Audio output buffer
     static void ProcessingCallback(daisy2::AudioInBuf inbuf, daisy2::AudioOutBuf outbuf)
     {
         // Update the gate inputs at the sample rate
@@ -62,10 +68,14 @@ protected:
     }
 
 protected:
+    /// @brief List of all available programs
     Program* progs[sizeof...(PROGS)];
 
+    /// @brief Current running program
     static inline Program* currentProgram = nullptr;
 
+    /// @brief Template for a static instance of each @ref Program type
+    /// @tparam PROG_T 
     template<typename PROG_T>
     static inline PROG_T progInstance;
 
@@ -73,6 +83,7 @@ protected:
     static inline std::atomic<unsigned> sampleCount = 0;
 };
 
+/// @brief List of available programs
 using ProgramList = ProgramListBase<
     ProgVariableOsc
     ,ProgSynthDrums
@@ -83,4 +94,5 @@ using ProgramList = ProgramListBase<
     ,ProgQuant
 >;
 
+/// @brief @ref Program runner
 static constinit ProgramList programs;

@@ -2,9 +2,8 @@
 
 namespace daisy2
 {
-
 /// @brief Handler for a rotary encoder with two quadrature switches and optional pushbutton
-/// @remarks Interrupts are used to track encoder movement with switch debouncing.
+/// @details Interrupts are used to track encoder movement with switch debouncing.
 /// Encoder position changes can be tracked at interrupt time via a Callback,
 /// or polled by calling Getchange().
 /// An optional pushbutton switch is also supported.
@@ -12,17 +11,22 @@ class Encoder
 {
 public:
     /// @brief Notification callback interface
-    /// @remarks Abstract base class
+    /// @details Abstract base class
     /// @note Methods may be called in an interrupt context
     class CallbackInterface
     {
     public:
+        /// @brief Called when the encoder has moved
+        /// @param change Change in encoder value, positive or negative
         virtual void OnEncoderChange(int change) = 0;
+
+        /// @brief Called when the encoder switch is pressed
+        /// @param fOn true if the switch turned on, falss if it turned off
         virtual void OnSwitchChange(bool fOn) = 0;
     };
 
     /// @brief Encoder configuration options
-    /// @remarks Note that all 3 GPIOs must have the same pullup configuration.
+    /// @details Note that all 3 GPIOs must have the same pullup configuration.
     struct Config
     {
         daisy::Pin pinEncA;                     ///< GPIO pin for the encoder A input
@@ -74,7 +78,7 @@ public:
     /// @brief Get the cumulative change in the encoder's position, with acceleration
     /// @return The change in encoder position. Positive for clockwise, negative
     /// for counter-clockwise.
-    /// @remarks If the encoder position changes several times in a row, jump in
+    /// @details If the encoder position changes several times in a row, jump in
     /// larger incremments.
     /// Depends on this function being called regularly at appropriate intervals.
     int GetChangeAccel()
@@ -106,7 +110,7 @@ public:
 // Event handling
 protected:
     /// @brief Interrupt handler for the encoder quadrature switches
-    /// @remarks This updates the encoder state, handles switch debouncing,
+    /// @details This updates the encoder state, handles switch debouncing,
     /// counts encoder "clicks", and calls this object's callback.
     void OnEncoderInterrupt()
     {
@@ -120,7 +124,7 @@ protected:
     }
 
     /// @brief Interface adapter for @ref GPIO::IrqHandlerInterface
-    /// @remarks This is used for both the "A" and "B" encoder switches.
+    /// @details This is used for both the "A" and "B" encoder switches.
     class EncoderIrqHandler : public GPIO::IrqHandlerInterface
     {
     public:
@@ -133,7 +137,7 @@ protected:
     EncoderIrqHandler irqHandler = EncoderIrqHandler(this);
 
     /// @brief Event handler for the pushbutton
-    /// @remarks It just forwards the event to this object's callback.
+    /// @details It just forwards the event to this object's callback.
     /// @param fOn 
     void OnSwitchChange(bool fOn)
     {
@@ -175,7 +179,7 @@ protected:
     };
 
     /// @brief Update the encoder's current state and return the incremental change
-    /// @remarks A state machine handles the quadrature encoding from the encoder
+    /// @details A state machine handles the quadrature encoding from the encoder
     /// switches and mitigates switch bounce.
     /// @note This function is called from an interrupt handler.
     /// @param fPinA On/off state of encoder switch A
@@ -192,7 +196,7 @@ protected:
         }
         // Update the encoder state and check for increments
         State statePrev = state;
-        state = stateTable[int(state)][fPinA][fPinB];
+        state = stateTable[std::to_underlying(state)][fPinA][fPinB];
         int change = 0;
         if (state == State::plus && statePrev == State::cw1)
             change = +1;
@@ -201,7 +205,6 @@ protected:
         return change;
     }
 
-// Data members
 protected:
     Config config;
     GPIO gpioEncA;

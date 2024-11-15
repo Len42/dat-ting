@@ -1,27 +1,36 @@
 #pragma once
 
-/// @brief Handler for display and encoder interactions
-/// @remarks This is a bit of a mess because (1) I want to put everything in a
-/// class so I can inject dependencies via template paramaters, but (2) I can't
-/// put everything in a class because certain compilers won't let me specialize
-/// a template inside a class. sigh.
-namespace UIImpl {
-
+/// @brief User interface
+/// @details Handles display and encoder interactions. Implemented with a state
+/// machine.
+/// @remarks This is a bit of a mess. Everything should be in the UI class but
+/// that's not possible because certain compilers won't let me specialize a
+/// template inside a class. sigh.
+namespace UIImpl
+{
 /// @brief User interface state IDs
-/// @remarks Each state has corresponding initState<> and doState<>
-/// functions (see below)
+/// @details Each state has corresponding init() and exec() functions.
+/// State only appears in compile-time contexts (e.g. template parameters).
+/// At runtime, the current state is represented by a pointer to the state's
+/// @ref StateImpl::exec function.
+/// @see StateImpl
 enum class State { Warmup, Idle, Sleep, Message, SelectProg, SelectParam, SelectValue };
 
 template<State state, typename UI> class StateImpl;
 
+/// @brief User interface implementation
+/// @tparam PROGRAM_LIST ProgramList type
+/// @tparam PROGS ProgramList object
 template<typename PROGRAM_LIST, PROGRAM_LIST& PROGS>
-class UIBase
+class UI
 {
 public:
+    /// @brief Return the ProgramList
+    /// @return 
     static constexpr PROGRAM_LIST& GetPrograms() { return PROGS; }
 
     /// @brief Display a message and enter Message state
-    /// @param str Null-terminated string
+    /// @param str 
     static void showMessage(std::string_view line1, std::string_view line2)
     {
         HW::display.Fill(false);
@@ -56,18 +65,20 @@ protected:
     static constexpr unsigned timeoutSelect = 3'000;    ///< Select mode timeout (ms)
     static constexpr unsigned timeoutMessage = 3'000;   ///< Message timeout (ms)
 
-    /// @brief The current state, represented as a function pointer
-    /// @details Called periodically to handle input and update the UI state.
+    /// @brief The current state
+    /// @details The state is represented as a pointer to the state's
+    /// @ref StateImpl::exec function, which is called periodically to handle
+    /// input and update the state.
     static inline auto stateExecFunction = +[](){}; // that's C++, baby!
 
-    /// @brief Set the UI to a different State
+    /// @brief Transition to a different State
     template<State state>
     static void setState()
     {
         // Stop animation if it's running - presumably the new state won't want it!
         AnimationTask::StopAnim();
-        stateExecFunction = StateImpl<state, UIBase>::exec;
-        StateImpl<state, UIBase>::init();
+        stateExecFunction = StateImpl<state, UI>::exec;
+        StateImpl<state, UI>::init();
     }
 
     /// @brief When the current timeout period will expire
@@ -95,15 +106,18 @@ protected:
         return HW::encoder.WasPressed() || HW::encoder.GetChangeAccel();
     }
 
-    static inline bool buttonSaved = false;
-    static inline unsigned potSaved = 0;
+    static inline bool buttonSaved = false; ///< saved button state
+    static inline unsigned potSaved = 0;    ///< saved potentiometer value
 
+    /// @brief Save the current button state and pot value so they can be compared later
     static void saveButtonPotValue()
     {
         buttonSaved = HW::button.IsOn();
         potSaved = HW::CVIn::GetRaw(HW::CVIn::Pot);
     }
 
+    /// @brief Check if the button state or pot value has changed since it was saved
+    /// @return true if either has changed
     static bool checkButtonPotActivity()
     {
         if (HW::button.IsOn() != buttonSaved) {
@@ -116,24 +130,32 @@ protected:
         return false;
     }
 
+    /// @brief The program parameter currently being edited
     static inline const Program::ParamDesc* currentParam = nullptr;
-}; // class UIBase
+}; // class UI
 
 /// @brief Template for each state's initialization and execution functions
 /// @tparam state 
-/// @remarks This is specialized for each State. The non-specialized version
-/// is not defined.
-/// @note All of this StateImpl stuff should be inside class UIBase, but as
+/// @details This non-specialized version is declared but not defined.
+/// Specializations will be defined for each @ref State.
+/// @note All of this StateImpl stuff should be inside class UI, but as
 /// mentioned above, that's not allowed.
 template<State state, typename UI>
 class StateImpl
 {
 public:
+    /// @brief Initialization function called whenever entering this state 
     static void init();
+
+    /// @brief State execution function called periodically to check input, do
+    /// stuff, and transition to a different state when appropriate.
+    /// @details A pointer to this function is used as the runtime representation
+    /// of this state instead of maintaining a @ref State variable.
     static void exec();
 };
 
 /// @brief Warmup state: Show the startup splash screen until something happens or timeout
+/// @details A fun multi-part animation is displayed during this state.
 template<typename UI>
 class StateImpl<State::Warmup, UI>
 {
@@ -142,23 +164,27 @@ public:
     {
         UI::setTimeout(UI::timeoutWarmup);
         static WarmupAnimation animation;
-        // TODO: AnimationTask dependency
         AnimationTask::StartAnim(&animation);
-        // KLUDGE: Need to delay 10 ms for ADC values to work
-        // TODO: Measure the actual ADC update rate!
-        HW::Sys::Delay(10);
+        // KLUDGE: A short delay may be required here to keep from immediately
+        // exiting Warmup state if there isn't enough time for the ADC to get
+        // going before now.
+        //HW::Sys::Delay(10);
         UI::saveButtonPotValue();
     }
 
     static void exec()
     {
         // Exit this state after timeout or if something happens
-        if (UI::checkTimeout() || UI::checkEncoderActivity() || UI::checkButtonPotActivity()) {
+        if (UI::checkTimeout()
+            || UI::checkEncoderActivity()
+            || UI::checkButtonPotActivity())
+        {
             UI::template setState<State::SelectProg>(); // that's C++, baby!
         }
     }
 
 protected:
+    /// @brief Animation state: Just a dot!
     class WarmupAnimDot : public Animation
     {
     public:
@@ -179,6 +205,7 @@ protected:
         }
     };
 
+    /// @brief Animation stage: Static fills the display
     class WarmupAnimGrowStatic : public Animation
     {
     public:
@@ -220,6 +247,7 @@ protected:
         static inline uint16_t yHalf = 0;
     };
 
+    /// @brief Animation stage: Watch the static
     class WarmupAnimHoldStatic : public Animation
     {
     public:
@@ -237,6 +265,7 @@ protected:
         }
     };
 
+    /// @brief Animation stage: Static fades to title text
     class WarmupAnimFadeStatic : public Animation
     {
     public:
@@ -284,6 +313,7 @@ protected:
         std::array<uint8_t, HW::display.GetBufSize()> buf;
     };
 
+    /// @brief Warmup animation is a sequence of animations
     using WarmupAnimation = AnimationSeq<WarmupAnimDot,
                                         WarmupAnimGrowStatic,
                                         WarmupAnimHoldStatic,
@@ -291,6 +321,8 @@ protected:
 };
 
 /// @brief Idle state: Display idle animation until something happens or timeout
+/// @details The currently-running program specifies the animation to use.
+/// This state times out after a while to prevent display burn-in.
 template<typename UI>
 class StateImpl<State::Idle, UI>
 {
@@ -313,7 +345,7 @@ public:
         } else if (UI::checkTimeout()) {
             UI::template setState<State::Sleep>();
         } else if (UI::checkButtonPotActivity()) {
-            // Pot has moved - reset the timeout to keep displaying the waveform
+            // Pot has moved - reset the timeout to keep displaying the animation
             UI::setTimeout(UI::timeoutIdle);
             UI::saveButtonPotValue();
         }
@@ -366,9 +398,14 @@ public:
     }
 };
 
-/// @brief Base class for item-selection UI using the rotary encoder
-/// @remarks Subclass GetList() method must return a std::span<ITEM_T>.
-/// I tried using views/iterators instead but it was a huge mess.
+/// @brief Base class for item selection using the rotary encoder
+/// @details There are subclasses for selecting a program, one of a program's
+/// parameters, and one of a parameter's values.
+/// Subclasses must implement:
+///     std::span<ITEM_T*> GetList()
+///     std::string_view Prompt()
+///     std::string_view GetItemName(ITEM_T& prog)
+///     void OnSelect(int i, ITEM_T& prog)
 /// @tparam SUB 
 /// @tparam UI 
 template<typename ITEM_T, typename SUB, typename UI>
@@ -377,13 +414,19 @@ class SelectItemBase
 public:
     static void init()
     {
+        // Get the list of items to display
         list = SUB::GetList();
         // If list is empty, skip this state...
         if (list.empty()) {
             UI::template setState<State::Idle>();
         // ...so list can be assumed non-empty from here down.
         } else {
-            iDisplayed = iSelected;
+            // Make sure the selected item is in the valid range.
+            // We usually want to keep the previous value but sometimes that's a
+            // problem, e.g. after switching programs, the index for SelectParam
+            // may be invalid.
+            setSelectedItem(iSelected);
+            setDisplayedItem(iSelected);
             showDisplayedItem();
             UI::setTimeout(UI::timeoutSelect);
         }
@@ -397,15 +440,21 @@ public:
             bool fButtonPressed = HW::encoder.WasPressed();
             int selectionChange = HW::encoder.GetChangeAccel();
             if (fButtonPressed) {
-                iSelected = iDisplayed;
+                setSelectedItem(iDisplayed);
                 SUB::OnSelect(iSelected, list[iSelected]);
             } else if (selectionChange) {
-                iDisplayed = std::clamp(iDisplayed + selectionChange, 0, std::ssize(list) - 1);
+                setDisplayedItem(iDisplayed + selectionChange);
                 showDisplayedItem();
                 UI::setTimeout(UI::timeoutSelect);
             }
         }
     }
+
+    /// @brief Set an item as the selected item
+    /// @param i Index of the item to select
+    static void setSelectedItem(int i) { iSelected = clampItemIndex(i); }
+
+    static void setDisplayedItem(int i) { iDisplayed = clampItemIndex(i); }
 
 protected:
     static inline std::span<ITEM_T> list;
@@ -414,20 +463,29 @@ protected:
 
     static inline int iDisplayed = 0;
 
+    /// @brief Ensire an item index is in range
+    /// @param i 
+    /// @return 
+    static int clampItemIndex(int i)
+    {
+        return std::clamp(i, 0, std::ssize(list) - 1);
+    }
+
+    /// @brief Display the name of the item specified by @ref iDisplayed
     static void showDisplayedItem()
     {
-        auto name = SUB::GetItemName(list[iDisplayed]);
         HW::display.Fill(false);
         HW::display.SetCursor(0, 0);
         HW::display.WriteString(SUB::Prompt(), true);
         HW::display.WriteString(":", true);
         HW::display.SetCursor(0, HW::display.GetFont()->FontHeight);
+        auto name = SUB::GetItemName(list[iDisplayed]);
         HW::display.WriteString(name, true);
         HW::display.Update();
     }
 };
 
-/// @brief Select state: Select a program using the rotary encoder
+/// @brief SelectProg state: Select a program using the rotary encoder
 /// @tparam UI 
 template<typename UI>
 class StateImpl<State::SelectProg, UI>
@@ -440,13 +498,14 @@ public:
 
     static std::string_view GetItemName(Program*& prog) { return prog->GetName(); }
 
-    static void OnSelect(int i, Program*& prog) {
+    static void OnSelect(int i, Program*& prog)
+    {
         UI::GetPrograms().RunProgram(prog);
         UI::template setState<State::SelectParam>();
     }
 };
 
-/// @brief Select parameter: Select a program parameter to edit
+/// @brief SelectParam state: Select a program parameter to edit
 /// @tparam UI 
 template<typename UI>
 class StateImpl<State::SelectParam, UI>
@@ -465,21 +524,18 @@ public:
     {
         auto program = UI::GetPrograms().GetCurrentProgram();
         return program ? program->GetParams()
-                         : std::span<const Program::ParamDesc>();
+                       : std::span<const Program::ParamDesc>();
     }
 
     static std::string_view GetItemName(const Program::ParamDesc& param) { return param.name; }
 
     static void OnSelect(int i, const Program::ParamDesc& param) {
         UI::currentParam = &param;
-        // BUG: Need to initialize with the current value of the parameter somehow
         UI::template setState<State::SelectValue>();
     }
 };
 
-// TODO: index-based impl for SelectValue?
-
-/// @brief Select value: Set the value of a program parameter
+/// @brief SelectValue state: Set the value of a program parameter
 /// @tparam UI 
 template<typename UI>
 class StateImpl<State::SelectValue, UI>
@@ -504,11 +560,11 @@ public:
         if (param == nullptr) {
             return std::span<const std::string_view>{};
         } else {
-            // KLUDGE: Unlike other states, the selected item must be initialized
-            // each time from the currently-selected parameter value.
+            // Initialize the selected item from the current parameter value
+            // KLUDGE: Seems like there should be a better place to do this
             auto program = UI::GetPrograms().GetCurrentProgram();
             if (program) {
-                BASE::iSelected = program->GetParamValue(UI::currentParam);
+                BASE::setSelectedItem(program->GetParamValue(UI::currentParam));
             }
             return param->valueNames;
         }

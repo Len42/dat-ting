@@ -2,6 +2,7 @@
 
 #include "tasks.h"
 
+/// @brief @ref tasks::Task that blinks the on-board LED
 class BlinkTask : public tasks::Task<BlinkTask>
 {
 public:
@@ -15,6 +16,8 @@ private:
     bool on = false;
 };
 
+/// @brief @ref tasks::Task that shows the state of the pushbutton using the
+/// on-board LED
 class ButtonLedTask : public tasks::Task<ButtonLedTask>
 {
 public:
@@ -25,6 +28,8 @@ public:
     void execute() { HW::seed.SetLed(HW::button.IsOn()); }
 };
 
+/// @brief @ref tasks::Task that shows the state of the CV1 gate input using the
+/// on-board LED and serial output
 class GateLedTask : public tasks::Task<GateLedTask>
 {
 public:
@@ -42,6 +47,8 @@ public:
     }
 };
 
+/// @brief @ref tasks::Task that prints (via serial output) ADC values from the
+/// CV inputs
 class AdcOutputTask : public tasks::Task<AdcOutputTask>
 {
 public:
@@ -90,6 +97,8 @@ private:
     CV cvPot{"Pot"};
 };
 
+/// @brief @ref tasks::Task that prints (via serial output) ADC values to help
+/// with CV input calibration
 class AdcCalibrateTask : public tasks::Task<AdcCalibrateTask>
 {
 public:
@@ -116,6 +125,7 @@ protected:
     unsigned adcPrev = 0;
 };
 
+/// @brief @ref tasks::Task that prints (via serial output) the audio sample rate
 class SampleRateTask : public tasks::Task<SampleRateTask>
 {
 public:
