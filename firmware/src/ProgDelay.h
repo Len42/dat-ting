@@ -23,14 +23,6 @@ static DelayLine DSY_SDRAM_BSS delayLine2;
 /// by the potentiometer or CV inputs. Pushbutton is used for tap tempo.
 class ProgDelay : public Program
 {
-    // DEBUG: TODO: Some of these need to be implemented permanently
-    static constexpr bool fDebReadTimer = false;
-    static constexpr unsigned debReadTimerFreq = 1000;
-    static constexpr bool fDebAverage = true;
-    static constexpr unsigned debAverageSamples = 48;
-    static constexpr bool fDebMinChange = true;
-    static constexpr float debMinChange = 0.0001;
-
     using this_t = ProgDelay;
 
     // Declare the configurable parameters of this program
@@ -52,6 +44,8 @@ class ProgDelay : public Program
         PARAM_CVSOURCE(ITEM, DelayControl, "Delay control", Pot) \
         PARAM_CVSOURCE(ITEM, FeedbackControl, "Feedback control", Fixed) \
         PARAM_CVSOURCE(ITEM, MixControl, "Mix control", Fixed) \
+        PARAM_CVSOURCE(ITEM, ModRateControl, "Mod rate control", Fixed) \
+        PARAM_CVSOURCE(ITEM, ModDepthControl, "Mod depth ctrl.", Fixed) \
         PARAM_NUM(ITEM, TapDiv, "Tap division", unsigned(TapDiv::Div11))
     DECL_PROG_PARAMS
     #undef PROG_PARAMS
@@ -65,22 +59,22 @@ public:
 
         delayLine1.Init();
         delayLine2.Init();
-        SetDelaySamples(delaySamples);
+        SetDelayCv(delaySave, 0);
+        SetFeedbackAmount(feedbackAmount);
+
         mix.Init(daisysp::CROSSFADE_CPOW);
         SetMixLevel(effectMixLevel);
-        timerReadCv.Init(freqReadCv, HW::sampleRate);
-        // Must call ReadCv to initialize things because Process() only calls it occasionally
-        // TODO: Is that right?
-        ProcessArgs args = Program::MakeProcessArgs({},{});
-        ReadCv(args);
+
+        lfoMod.Init(HW::sampleRate);
+        lfoMod.SetWaveform(daisysp::Oscillator::WAVE_SIN);
+        SetModRateHz(delayModRate);
+        SetModDepth(delayModDepth);
     }
 
     void Process(ProcessArgs& args) override
     {
-        // Only call ReadCv() occasionally to avoid noise artifacts
-        if (!fDebReadTimer || timerReadCv.Process()) {
-            ReadCv(args);
-        }
+        // LFO and CV input are processed once per callback, not once per sample
+        ReadCv(args);
 
         // Tap tempo setting
         bool tapped = false;
@@ -120,34 +114,57 @@ public:
 
 protected:
     /// @brief Update various CV-controlled parameters according to settings
+    /// @details This is called once per Process callback, not once per audio sample.
+    /// In addition to the input CVs, this also handles the software LFO.
     /// @param args 
     void ReadCv(const ProcessArgs& args)
     {
-        std::optional<unsigned> cv;
-        HW::CVIn::GetUnipolarExp(GetDelayControl())
-            .and_then([this](float val) { SetDelayCv(val); return emptyOpt; });
+        // Modulation LFO
+        HW::CVIn::GetUnipolarExp(GetModRateControl())
+            .and_then([this](float val) { SetModRateCv(val); return emptyOpt; });
+        HW::CVIn::GetUnipolar(GetModDepthControl())
+            .and_then([this](float val) { SetModDepth(val); return emptyOpt; });
+        float modVal = lfoMod.Process();
+
+        // CV inputs
+        // Must always call SetDelayCv even if GetUnipolarExp() returns nothing
+        // because modVal must always be processed.
+        auto cv = HW::CVIn::GetUnipolarExp(GetDelayControl());
+        SetDelayCv(cv, modVal);
         HW::CVIn::GetUnipolar(GetFeedbackControl())
             .and_then([this](float val) { SetFeedbackAmount(val); return emptyOpt; });
         HW::CVIn::GetUnipolar(GetMixControl())
             .and_then([this](float val) { SetMixLevel(val); return emptyOpt; });
     }
 
+    float delaySamples = 10000; ///< Delay time in samples
+
+    float delaySave = 0.05;     ///< Last-used delay CV value, used to detect changes
+
+    RunningAverage<float, 48> avgDelay; ///< Delay CV smoother-outer to avoid ugliness
+
     /// @brief Return the delay time in samples
     /// @return 
     float GetDelaySamples() const { return delaySamples; }
 
-    /// @brief Set the delay time from a unipolar CV value
-    /// @param delay 
-    void SetDelayCv(float delay)
+    /// @brief Set the delay time from a unipolar CV value, with modulation
+    /// @param delay optional delay CV value
+    /// @param modVal delay modulation value
+    void SetDelayCv(std::optional<float> delay, float modVal)
     {
-        static constexpr float minChange = debMinChange; // DEBUG
-        if constexpr (fDebAverage) // DEBUG
-            delay = avgDelay.update(delay);
-        if (!fDebMinChange || isDifferent(delay, delaySave, minChange)) {
-            delaySave = delay;
-            float delaySecs = delay * maxDelaySecs;
-            SetDelaySecs(delaySecs);
+        // Update the current delay value, only if given and only if it has
+        // changed sufficiently.
+        if (delay) {
+            static constexpr float minChange = 0.0001;
+            delay = avgDelay.update(*delay);
+            if (isDifferent(*delay, delaySave, minChange)) {
+                delaySave = *delay;
+            }
         }
+        float delaySecs = delaySave * maxDelaySecs;
+        // Always update the delay because modVal is always changing
+        delaySecs += modVal;
+        SetDelaySecs(delaySecs);
     }
 
     /// @brief Set the delay time in seconds
@@ -163,6 +180,49 @@ protected:
         delayLine2.SetDelay(samples);
     }
 
+    float delayModRate = 5;     ///< Delay time modulation rate
+    
+    daisysp::Oscillator lfoMod; ///< LFO for delay time modulation
+
+    /// @brief Return the delay time modulation rate in Hertz
+    /// @return 
+    float GetModRateHz() const { return delayModRate; }
+
+    /// @brief Set the delay time modulation rate from a CV value
+    /// @param rate 
+    void SetModRateCv(float rate)
+    {
+        // CV value [0, 1] -> LFO freq [0.1, 10] approx
+        SetModRateHz(rescale(rate, 0.f, 1.f, 0.1f, 10.1f));
+    }
+
+    /// @brief Set the delay time modulation rate in Hertz
+    /// @param rate 
+    void SetModRateHz(float rate)
+    {
+        delayModRate = rate;
+        // Adjust the LFO frequency because the LFO is only processed once per
+        // callback, not once per sample
+        lfoMod.SetFreq(rate * HW::audioBlockSize);
+    }
+
+    float delayModDepth = 0.2;  ///< Delay time modulation depth
+
+    /// @brief Return the delay time modulation depth
+    /// @return 
+    float GetModDepth() const { return delayModDepth; }
+
+    /// @brief Set the delay time modulation depth
+    /// @param depth 
+    void SetModDepth(float depth)
+    {
+        delayModDepth = depth;
+        // Map the CV to a useful amplitude range
+        lfoMod.SetAmp(rescale(depth, 0.f, 1.f, 0.f, 0.002f));
+    }
+
+    float feedbackAmount = 0.2; ///< Feedback amount
+
     /// @brief Return the feedback amount
     /// @return 
     float GetFeedbackAmount() const { return feedbackAmount; }
@@ -175,6 +235,10 @@ protected:
         // Map the CV to a range that goes a bit over 1.0
         feedbackAmount = rescale(amount, 0.0f, 0.95f, 0.0f, 1.1f);
     }
+
+    float effectMixLevel = 0.5; ///< Effect mix level
+
+    daisysp::CrossFade mix;     ///< Effect mixer
 
     /// @brief Return the effect mix level
     /// @return 
@@ -190,6 +254,8 @@ protected:
         effectMixLevel = mixLevel;
         mix.SetPos(mixLevel);
     }
+
+    HW::Sys::timeus_t tTap = 0; ///< Last tap time
 
     /// @brief Handle tap tempo using the pushbutton
     void HandleTap()
@@ -214,6 +280,7 @@ protected:
             if (delaySecs <= maxDelaySecs) {
                 SetDelayControl(HW::CVIn::Fixed);
                 SetDelaySecs(delaySecs);
+                delaySave = delaySecs / maxDelaySecs;
             }
         }
         // Reset the tap timer to now
@@ -221,24 +288,6 @@ protected:
     }
 
 private:
-    float delaySamples = 10000;
-
-    float feedbackAmount = 0.5;
-
-    float effectMixLevel = 0.5;
-
-    daisysp::CrossFade mix;
-
-    static constexpr float freqReadCv = debReadTimerFreq; // DEBUG 1000;
-
-    daisysp::Metro timerReadCv;
-
-    float delaySave = 99;
-
-    RunningAverage<float, debAverageSamples> avgDelay;
-
-    HW::Sys::timeus_t tTap = 0;
-
     /// @brief Animation for this program shows input and output amplitudes
     static inline AnimAmplitude<3> animation;
 
@@ -265,8 +314,12 @@ public:
                 auto [feedbackInt, feedbackFrac] = splitFloat(feedback, 3);
                 float mix = theProgram->GetMixLevel();
                 auto [mixInt, mixFrac] = splitFloat(mix, 3);
-                daisy2::DebugLog::PrintLine("delay=%u feedback=%d.%03u mix=%d.%03u",
-                    delay, feedbackInt, feedbackFrac, mixInt, mixFrac);
+                float modRate = theProgram->GetModRateHz();
+                auto [modRateInt, modRateFrac] = splitFloat(modRate, 3);
+                float modDepth = theProgram->GetModDepth();
+                daisy2::DebugLog::PrintLine("delay=%u feedback=%d.%03u mix=%d.%03u mod rate=%d.%03u depth=%d",
+                    delay, feedbackInt, feedbackFrac, mixInt, mixFrac,
+                    modRateInt, modRateFrac, int(modDepth * 100));
             }
         }
     };
