@@ -403,6 +403,7 @@ public:
 /// parameters, and one of a parameter's values.
 /// Subclasses must implement:
 ///     std::span<ITEM_T*> GetList()
+///     std::optional<int> GetInitialSelection()
 ///     std::string_view Prompt()
 ///     std::string_view GetItemName(ITEM_T& prog)
 ///     void OnSelect(int i, ITEM_T& prog)
@@ -421,11 +422,11 @@ public:
             UI::template setState<State::Idle>();
         // ...so list can be assumed non-empty from here down.
         } else {
-            // Make sure the selected item is in the valid range.
-            // We usually want to keep the previous value but sometimes that's a
-            // problem, e.g. after switching programs, the index for SelectParam
-            // may be invalid.
-            setSelectedItem(iSelected);
+            // Optionally initialize the selected item
+            auto initalSelection = SUB::GetInitialSelection();
+            if (initalSelection) {
+                setSelectedItem(*initalSelection);
+            }
             setDisplayedItem(iSelected);
             showDisplayedItem();
             UI::setTimeout(UI::timeoutSelect);
@@ -496,6 +497,8 @@ public:
 
     static std::span<Program*> GetList() { return UI::GetPrograms().GetList(); }
 
+    static std::optional<int> GetInitialSelection() { return std::nullopt; }
+
     static std::string_view GetItemName(Program*& prog) { return prog->GetName(); }
 
     static void OnSelect(int i, Program*& prog)
@@ -526,6 +529,8 @@ public:
         return program ? program->GetParams()
                        : std::span<const Program::ParamDesc>();
     }
+
+    static std::optional<int> GetInitialSelection() { return std::nullopt; }
 
     static std::string_view GetItemName(const Program::ParamDesc& param) { return param.name; }
 
@@ -560,13 +565,17 @@ public:
         if (param == nullptr) {
             return std::span<const std::string_view>{};
         } else {
-            // Initialize the selected item from the current parameter value
-            // KLUDGE: Seems like there should be a better place to do this
-            auto program = UI::GetPrograms().GetCurrentProgram();
-            if (program) {
-                BASE::setSelectedItem(program->GetParamValue(UI::currentParam));
-            }
             return param->valueNames;
+        }
+    }
+
+    static std::optional<int> GetInitialSelection()
+    {
+        auto program = UI::GetPrograms().GetCurrentProgram();
+        if (program) {
+            return int(program->GetParamValue(UI::currentParam));
+        } else {
+            return std::nullopt;
         }
     }
 
