@@ -8,7 +8,8 @@ class ProgVariableOsc : public Program
     // Declare the configurable parameters of this program
     #define PROG_PARAMS(ITEM) \
         PARAM_CVSOURCE(ITEM, ShapeControl, "Shape control", Pot) \
-        PARAM_CVSOURCE(ITEM, WidthControl, "Width control", Fixed)
+        PARAM_CVSOURCE(ITEM, WidthControl, "Width control", Fixed) \
+        PARAM_FLOAT(ITEM, ModAmount, "Mod amount", 0)
     DECL_PROG_PARAMS
     #undef PROG_PARAMS
 
@@ -26,9 +27,11 @@ protected:
     /// @param pparams 
     void UpdateOscParams(const ProcessArgs& args, OscParams* pparams)
     {
-        pparams->freq = HW::CVIn::GetFrequency(HW::CVIn::CV1);
-        pparams->shape = HW::CVIn::GetUnipolar(GetShapeControl()).value_or(0.2f);
-        pparams->width = HW::CVIn::GetUnipolar(GetWidthControl()).value_or(0.5f);
+        pparams->freq = HW::CVIn::GetFreqWithMod(HW::CVIn::CV1, HW::CVIn::CV2, GetModAmount());
+        HW::CVIn::GetUnipolar(GetShapeControl())
+            .and_then([pparams](float val) { pparams->shape = val; return emptyOpt; });
+        HW::CVIn::GetUnipolar(GetWidthControl())
+            .and_then([pparams](float val) { pparams->width = val; return emptyOpt; });
     }
 
 protected:

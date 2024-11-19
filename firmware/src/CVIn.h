@@ -98,6 +98,20 @@ public:
         return ConvertFreqCvValue(GetRaw(input));
     }
 
+    /// @brief Returns a frequency from a pitch CV and a modulation CV
+    /// @param inputPitch 
+    /// @param inputMod 
+    /// @param modAmount 
+    /// @return 
+    static float GetFreqWithMod(ADC inputPitch, ADC inputMod, float modAmount)
+    {
+        uint16_t cvPitch = GetRaw(inputPitch);
+        float cvMod = GetBipolar(inputMod).value_or(0);
+        int mod = int(cvMod * modAmount * 800.f);
+        uint16_t cvModulated = uint16_t(std::clamp(int(cvPitch) + mod, 0, int(cvRawMax)));
+        return ConvertFreqCvValue(cvModulated);
+    }
+
     /// @brief Return a MIDI note number corresponding to a 1V-per-octave pitch
     /// CV from the given input
     /// @param input ADC input channel
@@ -156,6 +170,8 @@ protected:
     }
 
     static constexpr unsigned numCvBits = 16;
+
+    static constexpr unsigned cvRawMax = (1u << numCvBits) - 1;
 
     // TODO: Values for HWType::Prototype not tested
     static constexpr uint16_t adcCvZero = isPrototype ? 93 : 31620;
