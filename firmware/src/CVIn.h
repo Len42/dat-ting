@@ -303,10 +303,10 @@ public:
     /// @brief Update the on/off state of all the gate inputs
     /// @details This must be called frequently (typically from the AudioCallback)
     /// TODO: Use analog watchdog interrupts instead of polling
-    static void UpdateGates()
+    static void Process()
     {
         for (auto&& input : inputs) {
-            input.gate.Update();
+            input.gate.Process();
         }
     }
 
@@ -319,13 +319,13 @@ public:
     /// was called
     /// @param cvIn 
     /// @return 
-    static bool GateOn(ADC cvIn) { return inputs[cvIn].gate.TurnedOn(); }
+    static bool GateTurnedOn(ADC cvIn) { return inputs[cvIn].gate.TurnedOn(); }
 
     /// @brief Return true if the gate has gone low since the last time this
     /// was called
     /// @param cvIn 
     /// @return 
-    static bool GateOff(ADC cvIn) { return inputs[cvIn].gate.TurnedOff(); }
+    static bool GateTurnedOff(ADC cvIn) { return inputs[cvIn].gate.TurnedOff(); }
 
 protected:
     static void InitGates()
@@ -340,14 +340,14 @@ protected:
     class Gate
     {
     public:
-        void Init(ADC in) { input = in; Update(); TurnedOn(); TurnedOff(); }
+        void Init(ADC in) { input = in; Process(); TurnedOn(); TurnedOff(); }
 
-        void Update()
+        void Process()
         {
             bool isHigh = (GetRaw(input) >= Pins::ADCGateMin);
             if (isHigh != wasHigh) {
                 wasHigh = isHigh;
-                auto [fHigh, fChanged] = debouncer.Debounce(isHigh ? +1 : -1);
+                auto [fHigh, fChanged] = debouncer.Process(isHigh ? +1 : -1);
                 if (fChanged) {
                     if (isHigh) turnedOn = true;
                     else turnedOff = true;

@@ -140,14 +140,14 @@ public:
             .inbuf = inbuf,
             .outbuf = outbuf,
             .fGateOn = {
-                HW::CVIn::GateOn(HW::CVIn::CV1),
-                HW::CVIn::GateOn(HW::CVIn::CV2),
+                HW::CVIn::GateTurnedOn(HW::CVIn::CV1),
+                HW::CVIn::GateTurnedOn(HW::CVIn::CV2),
                 HW::button.TurnedOn()
             },
             .fGateOff = {
-                HW::CVIn::GateOn(HW::CVIn::CV1),
-                HW::CVIn::GateOn(HW::CVIn::CV2),
-                HW::button.TurnedOn()
+                HW::CVIn::GateTurnedOff(HW::CVIn::CV1),
+                HW::CVIn::GateTurnedOff(HW::CVIn::CV2),
+                HW::button.TurnedOff()
             }
         };
     }

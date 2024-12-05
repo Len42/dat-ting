@@ -57,7 +57,7 @@ public:
         // Update the gate inputs at the sample rate
         // TODO: Use the analog watchdog feature to make gates interrupt-driven
         // like switches are
-        HW::CVIn::UpdateGates();
+        HW::CVIn::Process();
 
         // Call the current program's Process function
         if (currentProgram) {

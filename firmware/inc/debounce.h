@@ -14,7 +14,7 @@ public:
     /// it changed?
     /// @details This should be called whenever the input goes high or low (when
     /// detected by interrupts) or whenever the input is read (by polling).
-    std::pair<bool, bool> Debounce(int updown)
+    std::pair<bool, bool> Process(int updown)
     {
         // FUBAR: std::lock_guard(mutex) required here, but std::mutex is
         // not supported by gcc stdlib in this environment. Sigh.
@@ -34,7 +34,7 @@ public:
     /// @brief Return the current (debounced) high/low value
     /// @return Is the debounced input currently high?
     /// @details This function also checks the settling time and updates the state.
-    /// It's equivalent to calling Debounce(0) but more efficient.
+    /// It's equivalent to calling Process(0) but more efficient.
     bool GetValue()
     {
         // FUBAR: std::lock_guard(mutex) required here, but std::mutex is
@@ -76,7 +76,7 @@ protected:
     /// @brief Current state
     State state = State::low;
 
-    /// @brief Keep track of the last time Debounce() was called
+    /// @brief Keep track of the last time Process() was called
     uint32_t tLastCheck = 0;
 
     /// @brief Timeout for input settling

@@ -40,6 +40,7 @@ public:
     /// @brief Initialize a switch input on a GPIO pin
     /// @param cfg Switch configuration options
     /// @details This function initializes the given GPIO pin as an input.
+    /// @todo Make interrupts optional and implement Process() to call Debounce()
     void Init(const Config& cfg)
     {
         config = cfg;
@@ -113,14 +114,14 @@ protected:
     };
 
     /// @brief Switch debouncing using the @ref Debouncer class
-    /// @param updown Specify whether the input pin is going high (updown > 0),
-    /// low (< 0), or not changing (== 0).
+    /// @details This must be called periodically, either from a GPIO interrupt
+    /// when the input changes state or from the AudioCallback.
     /// @return Is the switch on?
     /// @note This function is called in an interrupt context.
     bool Debounce()
     {
         int updown = (gpio.Read() ? +1 : -1);
-        auto [fHigh, fChanged] = debouncer.Debounce(updown);
+        auto [fHigh, fChanged] = debouncer.Process(updown);
         bool fIsOn = OnOffFromHighLow(fHigh);
         if (fChanged) {
             if (fIsOn) {

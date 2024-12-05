@@ -40,9 +40,9 @@ public:
     void execute() {
         bool fGateOn = HW::CVIn::IsGateOn(HW::CVIn::CV1);
         HW::seed.SetLed(fGateOn);
-        if (HW::CVIn::GateOn(HW::CVIn::CV1))
+        if (HW::CVIn::GateTurnedOn(HW::CVIn::CV1))
             daisy2::DebugLog::PrintLine("gate ON = %s", fGateOn ? "ON" : "off");
-        if (HW::CVIn::GateOff(HW::CVIn::CV1))
+        if (HW::CVIn::GateTurnedOff(HW::CVIn::CV1))
             daisy2::DebugLog::PrintLine("gate off = %s", fGateOn ? "ON" : "off");
     }
 };

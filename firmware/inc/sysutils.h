@@ -11,6 +11,16 @@
 /// does from its name
 #define getAndSet std::exchange
 
+/// @brief For a given numeric type, return the value midway between the minimum
+/// and maximum representable values.
+/// @tparam T A numeric type
+/// @return The middle value in the range of T's values
+template<typename T>
+consteval T midValue()
+{
+    return static_cast<T>((std::numeric_limits<T>::lowest() + std::numeric_limits<T>::max()) / 2);
+}
+
 /// @brief Compare two values for equality but cut them some slack
 /// @tparam T Argument type
 /// @param v1 Value to compare
