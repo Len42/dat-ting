@@ -38,39 +38,37 @@ protected:
     /// @brief Base class for oscillator implementation
     /// @details There's a subclass for the actual oscillator and a subclass for
     /// waveform display.
-    /// @tparam SUB VarOscBase subclass (CRTP)
-    template<typename SUB>
     class VarOscBase
     {
-        SUB* subclass() { return static_cast<SUB*>(this); }
-
     public:
         /// @brief Initialize the oscillator
-        void Init()
+        /// @param self "this" object with deduced subclass type
+    void Init(this auto&& self)
         {
             auto sampleRate = HW::seed.AudioSampleRate();
-            subclass()->InitImpl(sampleRate);
-            osc.Init(sampleRate);
-            osc.SetSync(false);
+            self.InitImpl(sampleRate);
+            self.osc.Init(sampleRate);
+            self.osc.SetSync(false);
         }
 
         /// @brief Produce output using a @ref daisysp::VariableShapeOscillator
         /// @details Called from @ref Program::Process
+        /// @param self "this" object with deduced subclass type
         /// @param args 
         /// @param params 
-        void Process(ProcessArgs& args, const OscParams& params)
+        void Process(this auto&& self, ProcessArgs& args, const OscParams& params)
         {
             // Set the oscillator frequency, either from the CV input or
             // constant for waveform display
-            float freq = subclass()->GetFreq(params.freq);
+            float freq = self.GetFreq(params.freq);
             // NOTE: VariableShapeOscillator uses SetSyncFreq() instead of SetFreq()
-            osc.SetSyncFreq(freq);
+            self.osc.SetSyncFreq(freq);
             // Set the shape parameters
-            osc.SetWaveshape(params.shape);
-            osc.SetPW(params.width);
+            self.osc.SetWaveshape(params.shape);
+            self.osc.SetPW(params.width);
             // Fill the output with samples from the oscillator
             for (auto&& out : args.outbuf) {
-                out.left = out.right = osc.Process();
+                out.left = out.right = self.osc.Process();
             }
         }
 
@@ -80,18 +78,18 @@ protected:
     };
 
     /// @brief Actual oscillator implementation
-    class VarOscImpl : public VarOscBase<VarOscImpl>
+    class VarOscImpl : public VarOscBase
     {
     protected:
         void InitImpl(float sampleRate) { }
 
         float GetFreq(float freqParam) { return freqParam; }
 
-        template<typename SUB> friend class VarOscBase;
+        friend class VarOscBase;
     };
 
     /// @brief Implemenmtation of oscillator specialized for waveform display
-    class VarOscAnim : public VarOscBase<VarOscAnim>
+    class VarOscAnim : public VarOscBase
     {
     public:
         VarOscAnim() { }
@@ -103,7 +101,7 @@ protected:
 
         float freq = 100;
     
-        template<typename SUB> friend class VarOscBase;
+        friend class VarOscBase;
     };
 
     /// @brief @ref Animation for @ref ProgVariableOsc

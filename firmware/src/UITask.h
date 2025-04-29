@@ -44,7 +44,7 @@ public:
     }
 
     /// @brief User interface task
-    class Task : public tasks::Task<Task>
+    class Task : public tasks::Task
     {
     public:
         unsigned intervalMicros() const { return 50'000; }

@@ -3,7 +3,7 @@
 #include "tasks.h"
 
 /// @brief @ref tasks::Task that blinks the on-board LED
-class BlinkTask : public tasks::Task<BlinkTask>
+class BlinkTask : public tasks::Task
 {
 public:
     unsigned intervalMicros() const { return 500'000; }
@@ -18,7 +18,7 @@ private:
 
 /// @brief @ref tasks::Task that shows the state of the pushbutton using the
 /// on-board LED
-class ButtonLedTask : public tasks::Task<ButtonLedTask>
+class ButtonLedTask : public tasks::Task
 {
 public:
     unsigned intervalMicros() const { return 50'000; }
@@ -30,7 +30,7 @@ public:
 
 /// @brief @ref tasks::Task that shows the state of the CV1 gate input using the
 /// on-board LED and serial output
-class GateLedTask : public tasks::Task<GateLedTask>
+class GateLedTask : public tasks::Task
 {
 public:
     unsigned intervalMicros() const { return 2'000; }
@@ -49,7 +49,7 @@ public:
 
 /// @brief @ref tasks::Task that prints (via serial output) ADC values from the
 /// CV inputs
-class AdcOutputTask : public tasks::Task<AdcOutputTask>
+class AdcOutputTask : public tasks::Task
 {
 public:
     unsigned intervalMicros() const { return 500'000; }
@@ -99,7 +99,7 @@ private:
 
 /// @brief @ref tasks::Task that prints (via serial output) ADC values to help
 /// with CV input calibration
-class AdcCalibrateTask : public tasks::Task<AdcCalibrateTask>
+class AdcCalibrateTask : public tasks::Task
 {
 public:
     unsigned intervalMicros() const { return 1'500'000; }
@@ -126,7 +126,7 @@ protected:
 };
 
 /// @brief @ref tasks::Task that prints (via serial output) the audio sample rate
-class SampleRateTask : public tasks::Task<SampleRateTask>
+class SampleRateTask : public tasks::Task
 {
 public:
     unsigned intervalMicros() const { return 1'000'000; }

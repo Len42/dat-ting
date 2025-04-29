@@ -66,7 +66,7 @@ protected:
 };
 
 /// @brief @ref tasks::Task to display the currently-running animation, if any
-class AnimationTask : public tasks::Task<AnimationTask>
+class AnimationTask : public tasks::Task
 {
 public:
     unsigned intervalMicros() const { return Animator::framePeriodUs; }
