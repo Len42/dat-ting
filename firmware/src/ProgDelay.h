@@ -299,7 +299,7 @@ public:
 
     /// @brief @ref tasks::Task that prints (via serial output) current
     /// parameter values
-    class DebugTask : public tasks::Task<DebugTask>
+    class DebugTask : public tasks::Task
     {
     public:
         unsigned intervalMicros() const { return 1'000'000; }

@@ -189,7 +189,7 @@ public:
     friend class DebugTask;
 
     /// @brief @ref tasks::Task that prints some info (via serial output)
-    class DebugTask : public tasks::Task<DebugTask>
+    class DebugTask : public tasks::Task
     {
     public:
         unsigned intervalMicros() const { return 1'000'000; }

@@ -44,7 +44,7 @@ public:
     }
 
     /// @brief User interface task
-    class Task : public tasks::Task<Task>
+    class Task : public tasks::Task
     {
     public:
         unsigned intervalMicros() const { return 50'000; }
@@ -123,8 +123,9 @@ protected:
         if (HW::button.IsOn() != buttonSaved) {
             return true;
         }
+        static constexpr int minChange = 100;
         int diff = int(HW::CVIn::GetRaw(HW::CVIn::Pot)) - int(potSaved);
-        if (std::abs(diff) > 100) {
+        if (std::abs(diff) > minChange) {
             return true;
         }
         return false;
@@ -168,7 +169,7 @@ public:
         // KLUDGE: A short delay may be required here to keep from immediately
         // exiting Warmup state if there isn't enough time for the ADC to get
         // going before now.
-        //HW::Sys::Delay(10);
+        HW::Sys::Delay(10);
         UI::saveButtonPotValue();
     }
 

@@ -13,10 +13,8 @@
 /// 
 /// 1. Define each task as a subclass of Tasks::Task like this.
 /// A single instance of this class will be created automatically.
-/// @note This declaration uses the "curiously recurring template pattern" (CRTP).
-/// @see https://en.wikipedia.org/wiki/Curiously_recurring_template_pattern
 /// @code
-/// class ExampleTask : public Tasks::Task<ExampleTask>
+/// class ExampleTask : public Tasks::Task
 /// {
 /// public:
 ///     // Task execution interval in microseconds
@@ -75,24 +73,21 @@ inline tasktime_t getCurrentMicros()
 }
 
 /// @brief  Base class for application-defined tasks
-/// @tparam SUB Subclass that is being declared (CRTP)
-template<typename SUB>
 class Task
 {
 public:
     /// @brief If it's time to call execute(), do so
+    /// @param self "this" object with deduced subclass type
     /// @param now Current time
-    void tick(tasktime_t now)
+    void tick(this auto&& self, tasktime_t now)
     {
-        if (now >= timer) {
-            timer = getCurrentMicros() + subclass()->intervalMicros();
-            subclass()->execute();
+        if (now >= self.timer) {
+            self.timer = getCurrentMicros() + self.intervalMicros();
+            self.execute();
         }
     }
 
 private:
-    SUB* subclass() { return static_cast<SUB*>(this); }
-
     /// @brief Keeps track of the next time this task should be executed
     tasktime_t timer = 0;
 };

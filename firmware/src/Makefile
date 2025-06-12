@@ -18,7 +18,7 @@ VERSION_FILES = ./version.h ./VERSION.txt
 APP_TYPE = BOOT_SRAM
 
 # Compiler settings
-GCC_PATH = "C:\Program Files (x86)\Arm GNU Toolchain arm-none-eabi\13.3 rel1\bin"
+GCC_PATH = "C:\Program Files (x86)\Arm GNU Toolchain arm-none-eabi\14.2 rel1\bin"
 CPP_STANDARD = -std=gnu++23
 OPT = -O3
 C_INCLUDES = -I../inc
